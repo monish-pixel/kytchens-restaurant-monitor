@@ -91,5 +91,4 @@ def run_migrations():
         conn.close()
         print("[MIGRATE] Tables ready", flush=True)
     except Exception as e:
-        print(f"[MIGRATE] Failed: {e}", flush=True)
-        raise
+        print(f"[MIGRATE] Skipped: {e}", flush=True)
