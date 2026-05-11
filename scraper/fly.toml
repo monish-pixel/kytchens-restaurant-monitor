@@ -1,0 +1,14 @@
+app = "kytchens-monitor"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  POLL_INTERVAL_SECONDS = "600"
+  MAX_CONSECUTIVE_FAILURES = "5"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
