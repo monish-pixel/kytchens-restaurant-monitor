@@ -59,7 +59,7 @@ def _alert(parsed: dict, restaurant: dict):
 
 async def poll_swiggy_for(restaurant: dict):
     swiggy_id = restaurant.get("swiggy_id", "").strip()
-    swiggy_slug = restaurant.get("swiggy_slug", "").strip()
+    swiggy_slug = (restaurant.get("swiggy_slug") or "").strip()
     if not swiggy_id:
         return
 
@@ -79,7 +79,7 @@ async def poll_swiggy_for(restaurant: dict):
 
 
 def poll_zomato_for(restaurant: dict):
-    zomato_slug = restaurant.get("zomato_slug", "").strip()
+    zomato_slug = (restaurant.get("zomato_slug") or "").strip()
     if not zomato_slug:
         return
 
