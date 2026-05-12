@@ -134,8 +134,6 @@ def parse(data: dict) -> dict:
     else:
         is_open = next_open is None
 
-    print(f"[swiggy.parse] restaurant_id={restaurant_info.get('id')} name={restaurant_info.get('name')} avail={avail}", flush=True)
-
     return {
         "platform": "swiggy",
         "restaurant_id": restaurant_info.get("id", ""),
