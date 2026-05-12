@@ -81,14 +81,21 @@ def sync_restaurants(sheet_id: str, service_account_json: dict) -> dict:
             "city": city,
             "city_slug": city_slug,
             "swiggy_id": row.get("swiggy_id", "").strip() or None,
-            "swiggy_slug": row.get("swiggy_slug", "").strip() or None,
-            "zomato_slug": row.get("zomato_slug", "").strip() or None,
             "operational_hours_swiggy": row.get("operational_hours_swiggy", "").strip() or None,
             "operational_hours_zomato": row.get("operational_hours_zomato", "").strip() or None,
             "should_be_live_swiggy": _parse_bool(row.get("should_be_live_swiggy", "true")),
             "should_be_live_zomato": _parse_bool(row.get("should_be_live_zomato", "true")),
             "active": _parse_bool(row.get("active", "true")),
         }
+
+        # Only overwrite slug fields if the sheet provides a non-empty value;
+        # scraper may have auto-discovered the correct slug and we must not blank it.
+        swiggy_slug_sheet = row.get("swiggy_slug", "").strip()
+        zomato_slug_sheet = row.get("zomato_slug", "").strip()
+        if swiggy_slug_sheet:
+            record["swiggy_slug"] = swiggy_slug_sheet
+        if zomato_slug_sheet:
+            record["zomato_slug"] = zomato_slug_sheet
 
         if key not in existing:
             client.table("restaurants").insert(record).execute()

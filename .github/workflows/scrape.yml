@@ -24,6 +24,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r scraper/requirements.txt
 
+      - name: Migrate swiggy slugs (one-time)
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python migrate_swiggy_slugs.py || true
+
       - name: Sync Google Sheets to Supabase
         id: sync
         working-directory: scraper
