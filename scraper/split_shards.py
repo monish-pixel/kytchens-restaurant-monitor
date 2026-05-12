@@ -41,15 +41,15 @@ def main():
             f"[CRITICAL] Only {count} active restaurants found "
             f"(expected >= {MIN_EXPECTED_RESTAURANTS}). "
             "Possible Supabase outage or empty config — aborting scrape.",
-            flush=True,
+            file=sys.stderr, flush=True,
         )
         sys.exit(1)
 
-    print(f"[SPLIT] {count} active restaurants → splitting into shards", flush=True)
+    print(f"[SPLIT] {count} active restaurants → splitting into shards", file=sys.stderr, flush=True)
 
     shards = split_into_shards(restaurants, MAX_SHARDS)
     num_shards = len(shards)
-    print(f"[SPLIT] {num_shards} shards", flush=True)
+    print(f"[SPLIT] {num_shards} shards", file=sys.stderr, flush=True)
 
     matrix = {
         "include": [
@@ -61,6 +61,7 @@ def main():
         ]
     }
 
+    # Only the matrix= line goes to stdout (→ $GITHUB_OUTPUT); all other prints use stderr
     print(f"matrix={json.dumps(matrix)}")
 
 
