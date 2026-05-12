@@ -18,12 +18,10 @@ type Props = {
   alerts: Alert[];
 };
 
-function LiveItemsList({ snap, platform }: { snap: Snapshot | null; platform: string }) {
+function LiveItemsList({ snap }: { snap: Snapshot | null }) {
   if (!snap || snap.items.length === 0) return null;
-  const liveItems = snap.items.filter((i) => i.in_stock);
-  if (liveItems.length === 0) return <div className="text-[11px] text-gray-400 mt-1">All items out of stock</div>;
 
-  const byCategory = liveItems.reduce<Record<string, MenuItem[]>>((acc, item) => {
+  const byCategory = snap.items.reduce<Record<string, MenuItem[]>>((acc, item) => {
     const cat = item.category ?? "Other";
     (acc[cat] ??= []).push(item);
     return acc;
@@ -36,7 +34,14 @@ function LiveItemsList({ snap, platform }: { snap: Snapshot | null; platform: st
           <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{cat}</div>
           <div className="flex flex-wrap gap-1">
             {items.map((item, i) => (
-              <span key={i} className="text-[11px] bg-green-50 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
+              <span
+                key={i}
+                className={`text-[11px] rounded px-1.5 py-0.5 border ${
+                  item.in_stock
+                    ? "bg-green-50 text-green-800 border-green-200"
+                    : "bg-gray-50 text-gray-400 border-gray-200 line-through"
+                }`}
+              >
                 {item.name}
               </span>
             ))}
@@ -358,13 +363,13 @@ export default function LocationDashboard({
                     {r.should_be_live_swiggy && hasSwiggyItems && (
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: C.swiggy }}>Swiggy</div>
-                        <LiveItemsList snap={swiggy} platform="swiggy" />
+                        <LiveItemsList snap={swiggy} />
                       </div>
                     )}
                     {r.should_be_live_zomato && hasZomatoItems && (
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: C.zomato }}>Zomato</div>
-                        <LiveItemsList snap={zomato} platform="zomato" />
+                        <LiveItemsList snap={zomato} />
                       </div>
                     )}
                   </div>

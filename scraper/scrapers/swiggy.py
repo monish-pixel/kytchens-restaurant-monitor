@@ -127,12 +127,17 @@ def parse(data: dict) -> dict:
     avail = restaurant_info.get("availability", {})
     next_open = avail.get("nextOpenTime")
     opened = avail.get("opened")
-    # "opened" is the explicit server-side field (True when accepting orders).
-    # Fall back to nextOpenTime absence check for older response shapes.
+    # "opened" is the explicit server-side field (1/True when accepting orders).
+    # If absent AND no nextOpenTime either, treat as closed — the fallback
+    # `next_open is None` caused false-positives when Swiggy returns a minimal
+    # availability object like {"visibility": true, "restaurantClosedMeta": {}}
+    # with neither field populated.
     if opened is not None:
         is_open = bool(opened)
+    elif next_open is not None:
+        is_open = False
     else:
-        is_open = next_open is None
+        is_open = False
 
     return {
         "platform": "swiggy",
