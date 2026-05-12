@@ -16,6 +16,12 @@ export type Restaurant = {
   should_be_live_zomato: boolean;
 };
 
+export type MenuItem = {
+  name: string;
+  category: string | null;
+  in_stock: boolean;
+};
+
 export type Snapshot = {
   id: number;
   platform: string;
@@ -24,6 +30,7 @@ export type Snapshot = {
   fetched_at: string;
   item_count: number;
   items_out_of_stock: number;
+  items: MenuItem[];
 };
 
 export type StatusChange = {
@@ -68,10 +75,10 @@ async function getLatestSnapshots(): Promise<Map<string, Snapshot>> {
   const map = new Map<string, Snapshot>();
   for (const row of data ?? []) {
     const key = `${row.platform}:${row.restaurant_id}`;
-    if (!map.has(key)) map.set(key, { ...row, item_count: 0, items_out_of_stock: 0 } as Snapshot);
+    if (!map.has(key)) map.set(key, { ...row, item_count: 0, items_out_of_stock: 0, items: [] } as Snapshot);
   }
 
-  // Fetch item counts for the deduped snapshot IDs only
+  // Fetch item details for the deduped snapshot IDs only
   const snapIds = [...map.values()].map((s) => s.id);
   if (snapIds.length > 0) {
     const byId = new Map<number, Snapshot>();
@@ -79,7 +86,7 @@ async function getLatestSnapshots(): Promise<Map<string, Snapshot>> {
 
     const { data: items } = await supabase
       .from("menu_items")
-      .select("snapshot_id, in_stock")
+      .select("snapshot_id, name, category, in_stock")
       .in("snapshot_id", snapIds);
 
     for (const item of items ?? []) {
@@ -87,6 +94,7 @@ async function getLatestSnapshots(): Promise<Map<string, Snapshot>> {
       if (snap) {
         snap.item_count++;
         if (!item.in_stock) snap.items_out_of_stock++;
+        snap.items.push({ name: item.name, category: item.category ?? null, in_stock: item.in_stock });
       }
     }
   }

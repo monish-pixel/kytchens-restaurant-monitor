@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import type { Restaurant, Snapshot, StatusChange, Alert } from "@/lib/fleet";
+import type { Restaurant, Snapshot, MenuItem, StatusChange, Alert } from "@/lib/fleet";
 
 type RestaurantStatus = {
   restaurant: Restaurant;
@@ -17,6 +17,35 @@ type Props = {
   statusChanges: StatusChange[];
   alerts: Alert[];
 };
+
+function LiveItemsList({ snap, platform }: { snap: Snapshot | null; platform: string }) {
+  if (!snap || snap.items.length === 0) return null;
+  const liveItems = snap.items.filter((i) => i.in_stock);
+  if (liveItems.length === 0) return <div className="text-[11px] text-gray-400 mt-1">All items out of stock</div>;
+
+  const byCategory = liveItems.reduce<Record<string, MenuItem[]>>((acc, item) => {
+    const cat = item.category ?? "Other";
+    (acc[cat] ??= []).push(item);
+    return acc;
+  }, {});
+
+  return (
+    <div className="mt-2 space-y-2">
+      {Object.entries(byCategory).map(([cat, items]) => (
+        <div key={cat}>
+          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{cat}</div>
+          <div className="flex flex-wrap gap-1">
+            {items.map((item, i) => (
+              <span key={i} className="text-[11px] bg-green-50 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
+                {item.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const C = {
   swiggy: "#FC8019",
@@ -295,19 +324,40 @@ export default function LocationDashboard({
           </div>
         )}
 
-        {/* Menu items */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Menu Items
+        {/* Live menu items per brand */}
+        {restaurants.some(({ swiggy, zomato }) => (swiggy?.items?.length ?? 0) > 0 || (zomato?.items?.length ?? 0) > 0) && (
+          <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
+            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                Live Menu Items
+              </span>
+            </div>
+            {restaurants.map(({ restaurant: r, swiggy, zomato }) => {
+              const hasSwiggyItems = (swiggy?.items?.length ?? 0) > 0;
+              const hasZomatoItems = (zomato?.items?.length ?? 0) > 0;
+              if (!hasSwiggyItems && !hasZomatoItems) return null;
+              return (
+                <div key={r.id} className="px-4 py-3 border-b border-gray-100 last:border-0">
+                  <div className="text-sm font-semibold text-gray-800 mb-2">{r.brand}</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {r.should_be_live_swiggy && hasSwiggyItems && (
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: C.swiggy }}>Swiggy</div>
+                        <LiveItemsList snap={swiggy} platform="swiggy" />
+                      </div>
+                    )}
+                    {r.should_be_live_zomato && hasZomatoItems && (
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: C.zomato }}>Zomato</div>
+                        <LiveItemsList snap={zomato} platform="zomato" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="text-xs text-gray-400">
-            Menu item monitoring not yet configured.{" "}
-            <span className="text-gray-300">
-              Add items to the &ldquo;Items Master&rdquo; tab in Google Sheets to enable this
-              section.
-            </span>
-          </div>
-        </div>
+        )}
       </main>
     </div>
   );
