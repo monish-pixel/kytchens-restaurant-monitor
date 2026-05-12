@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
-/* Force light mode — this app has no dark theme */
+/* Disable auto dark mode — require explicit .dark class that we never add */
+@variant dark (&:is(.dark *));
+
 :root {
   color-scheme: light;
 }
 html {
-  background: #f9fafb;
+  background: #f9fafb !important;
 }
