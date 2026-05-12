@@ -1,57 +1,68 @@
+import json
 import os
 
 
-def send_alert(platform: str, direction: str, parsed: dict):
-    msg = f"[Kytchens] {platform.upper()} {direction}\nItems: {parsed.get('item_count', '?')}"
+def send_alert(platform: str, direction: str, parsed: dict, restaurant: dict | None = None):
+    r = restaurant or {}
+    brand = r.get("brand") or parsed.get("brand", "")
+    location = r.get("location") or parsed.get("location", "")
+    label = f"{brand} @ {location}" if brand and location else platform.upper()
+
+    msg = f"[Kytchens] {label} — {direction} on {platform.upper()}"
     if parsed.get("next_open_message"):
         msg += f"\n{parsed['next_open_message']}"
     elif parsed.get("timing_desc"):
         msg += f"\n{parsed['timing_desc']}"
 
-    _write_to_db(platform, direction, msg)
-    _try_whatsapp(msg)
+    alert_id = _write_to_db(platform, direction, msg, restaurant)
+    success = _try_slack(msg)
+    if alert_id and success:
+        from storage.supabase import mark_alert_notified
+        mark_alert_notified(alert_id)
 
 
-def send_scraper_alert(platform: str, fail_count: int):
-    msg = f"[Kytchens] {platform.upper()} scraper has failed {fail_count} times in a row. Check logs."
-    _write_to_db(platform, "scraper_failing", msg)
-    _try_whatsapp(msg)
+def send_scraper_alert(platform: str, fail_count: int, restaurant: dict | None = None):
+    r = restaurant or {}
+    brand = r.get("brand", platform.upper())
+    msg = f"[Kytchens] {brand} {platform.upper()} scraper has failed {fail_count} times in a row. Check logs."
+    alert_id = _write_to_db(platform, "scraper_failing", msg, restaurant)
+    success = _try_slack(msg)
+    if alert_id and success:
+        from storage.supabase import mark_alert_notified
+        mark_alert_notified(alert_id)
 
 
-def _write_to_db(platform: str, alert_type: str, details: str):
+def send_platform_outage_alert(platform: str, offline_count: int):
+    msg = (
+        f":warning: *Platform alert:* {offline_count} {platform.upper()} restaurants offline this cycle "
+        f"— possible platform outage. Check {platform.capitalize()} status."
+    )
+    _try_slack(msg)
+
+
+def _write_to_db(platform: str, alert_type: str, details: str,
+                 restaurant: dict | None = None) -> int | None:
     try:
-        from storage.supabase import _get_client
-        client = _get_client()
-        client.table("alerts").insert({
-            "platform": platform,
-            "alert_type": alert_type,
-            "details": details,
-            "notified": False,
-        }).execute()
-        client.table("alerts").update({"notified": True}) \
-            .eq("platform", platform) \
-            .eq("notified", False) \
-            .execute()
+        from storage.supabase import write_alert
+        write_alert(platform, alert_type, details, restaurant)
+        return None
     except Exception as e:
         print(f"[ALERT DB] {e}")
+        return None
 
 
-def _try_whatsapp(msg: str):
-    sid = os.environ.get("TWILIO_SID")
-    token = os.environ.get("TWILIO_TOKEN")
-    from_num = os.environ.get("TWILIO_FROM")
-    to_num = os.environ.get("ALERT_PHONE")
-
-    if not all([sid, token, from_num, to_num]):
-        return
-
+def _try_slack(msg: str) -> bool:
+    webhook = os.environ.get("SLACK_WEBHOOK_URL")
+    if not webhook:
+        return False
     try:
-        from twilio.rest import Client
-        client = Client(sid, token)
-        client.messages.create(
-            body=msg,
-            from_=f"whatsapp:{from_num}",
-            to=f"whatsapp:{to_num}",
+        import httpx
+        resp = httpx.post(
+            webhook,
+            json={"text": msg},
+            timeout=10,
         )
+        return resp.status_code == 200
     except Exception as e:
-        print(f"[WHATSAPP] {e}")
+        print(f"[SLACK] {e}")
+        return False

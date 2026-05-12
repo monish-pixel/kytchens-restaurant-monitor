@@ -1,7 +1,5 @@
 import asyncio
-import json
 import random
-import time
 from datetime import datetime
 
 import config
@@ -15,24 +13,24 @@ def log(msg):
     print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
-def save_snapshot(parsed: dict, raw: dict):
+def save_snapshot(parsed: dict, raw: dict, restaurant: dict | None = None):
     try:
         from storage.supabase import save_snapshot as db_save
-        db_save(parsed, raw)
+        db_save(parsed, raw, restaurant)
     except Exception as e:
         log(f"[DB ERROR] {e}")
 
 
-def check_and_alert(parsed: dict):
+def check_and_alert(parsed: dict, restaurant: dict | None = None):
     platform = parsed["platform"]
     is_open = parsed.get("is_open")
+    restaurant_id = parsed.get("restaurant_id", "")
 
-    # Use in-memory cache when available (always-on loop); fall back to DB (one-shot mode)
     prev = last_status.get(platform)
     if prev is None:
         try:
             from storage.supabase import get_latest
-            snap = get_latest(platform, parsed.get("restaurant_id", ""))
+            snap = get_latest(platform, restaurant_id)
             prev = snap["is_open"] if snap else None
         except Exception:
             pass
@@ -41,8 +39,13 @@ def check_and_alert(parsed: dict):
         direction = "CAME ONLINE" if is_open else "WENT OFFLINE"
         log(f"[ALERT] {platform.upper()} {direction}")
         try:
+            from storage.supabase import write_status_change
+            write_status_change(platform, restaurant_id, prev, is_open, restaurant)
+        except Exception as e:
+            log(f"[STATUS_CHANGE ERROR] {e}")
+        try:
             from alerts.notify import send_alert
-            send_alert(platform, direction, parsed)
+            send_alert(platform, direction, parsed, restaurant)
         except Exception as e:
             log(f"[ALERT ERROR] {e}")
 
@@ -101,7 +104,7 @@ def poll_zomato():
 
 async def run_cycle():
     poll_zomato()
-    await asyncio.sleep(2)  # stagger to avoid simultaneous requests
+    await asyncio.sleep(2)
     await poll_swiggy()
 
 
