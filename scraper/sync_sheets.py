@@ -99,15 +99,11 @@ def sync_restaurants(sheet_id: str, service_account_json: dict) -> dict:
             ).eq("city_slug", city_slug).execute()
             updated += 1
 
-    for key, existing_row in existing.items():
-        if key not in seen_keys and existing_row.get("active", True):
-            brand, location_slug, city_slug = key
-            client.table("restaurants").update({"active": False}).eq("brand", brand).eq(
-                "location_slug", location_slug
-            ).eq("city_slug", city_slug).execute()
-            deactivated += 1
+    # Deactivation is intentional-only: set active=false in the sheet row itself.
+    # Auto-deactivating DB rows not present in the sheet would wipe manually-added
+    # restaurants that haven't been added to the sheet yet.
 
-    stats = {"added": added, "updated": updated, "deactivated": deactivated}
+    stats = {"added": added, "updated": updated, "deactivated": 0}
     print(f"[SYNC] restaurants: {stats}", flush=True)
     return stats
 
