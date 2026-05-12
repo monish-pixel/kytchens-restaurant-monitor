@@ -6,6 +6,7 @@ from playwright.async_api import async_playwright
 
 async def fetch(restaurant_id: str, url_slug: str) -> dict:
     captured = {}
+    captured_api_url = {}
 
     async def on_response(response):
         if "mapi/menu/pl" in response.url and response.status == 200:
@@ -13,6 +14,7 @@ async def fetch(restaurant_id: str, url_slug: str) -> dict:
                 body = await response.json()
                 if is_valid(body):
                     captured["data"] = body
+                    captured_api_url["url"] = response.url
             except Exception:
                 pass
 
@@ -39,6 +41,25 @@ async def fetch(restaurant_id: str, url_slug: str) -> dict:
         url = f"https://www.swiggy.com/city/{url_slug}"
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         await asyncio.sleep(6)
+
+        # If we got data but it shows closed, re-fetch the API URL with explicit
+        # Pune lat/lng — Swiggy computes open/closed server-side based on IP geolocation,
+        # so a US server IP may return wrong closed status for IST-based restaurants.
+        if captured.get("data") and captured_api_url.get("url"):
+            api_url = captured_api_url["url"]
+            if "lat=" in api_url and "lng=" in api_url:
+                import re
+                api_url = re.sub(r"lat=[^&]+", "lat=18.5204", api_url)
+                api_url = re.sub(r"lng=[^&]+", "lng=73.8567", api_url)
+                try:
+                    resp = await page.request.get(api_url)
+                    if resp.ok:
+                        body = await resp.json()
+                        if is_valid(body):
+                            captured["data"] = body
+                except Exception:
+                    pass
+
         await browser.close()
 
     return captured.get("data", {})
