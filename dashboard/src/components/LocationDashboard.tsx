@@ -204,6 +204,14 @@ export default function LocationDashboard({
                           {formatDistanceToNow(new Date(swiggy.fetched_at), { addSuffix: true })}
                         </div>
                       )}
+                      {swiggy && swiggy.item_count > 0 && (
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          {swiggy.item_count} items
+                          {swiggy.items_out_of_stock > 0 && (
+                            <span className="text-amber-600 font-medium"> · {swiggy.items_out_of_stock} OOS</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-300">Not active</span>
@@ -226,6 +234,14 @@ export default function LocationDashboard({
                       {zomato && (
                         <div className="text-[10px] text-gray-400 mt-0.5">
                           {formatDistanceToNow(new Date(zomato.fetched_at), { addSuffix: true })}
+                        </div>
+                      )}
+                      {zomato && zomato.item_count > 0 && (
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          {zomato.item_count} items
+                          {zomato.items_out_of_stock > 0 && (
+                            <span className="text-amber-600 font-medium"> · {zomato.items_out_of_stock} OOS</span>
+                          )}
                         </div>
                       )}
                     </div>

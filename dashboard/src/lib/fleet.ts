@@ -17,10 +17,13 @@ export type Restaurant = {
 };
 
 export type Snapshot = {
+  id: number;
   platform: string;
   restaurant_id: string;
   is_open: boolean;
   fetched_at: string;
+  item_count: number;
+  items_out_of_stock: number;
 };
 
 export type StatusChange = {
@@ -55,17 +58,39 @@ async function getLatestSnapshots(): Promise<Map<string, Snapshot>> {
   const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("snapshots")
-    .select("platform, restaurant_id, is_open, fetched_at")
+    .select("id, platform, restaurant_id, is_open, fetched_at")
     .gte("fetched_at", cutoff)
     .order("fetched_at", { ascending: false });
 
   if (error) throw new Error(`snapshots query failed: ${error.message}`);
 
+  // Deduplicate: keep only the latest per (platform, restaurant_id)
   const map = new Map<string, Snapshot>();
   for (const row of data ?? []) {
     const key = `${row.platform}:${row.restaurant_id}`;
-    if (!map.has(key)) map.set(key, row as Snapshot);
+    if (!map.has(key)) map.set(key, { ...row, item_count: 0, items_out_of_stock: 0 } as Snapshot);
   }
+
+  // Fetch item counts for the deduped snapshot IDs only
+  const snapIds = [...map.values()].map((s) => s.id);
+  if (snapIds.length > 0) {
+    const byId = new Map<number, Snapshot>();
+    for (const s of map.values()) byId.set(s.id, s);
+
+    const { data: items } = await supabase
+      .from("menu_items")
+      .select("snapshot_id, in_stock")
+      .in("snapshot_id", snapIds);
+
+    for (const item of items ?? []) {
+      const snap = byId.get(item.snapshot_id);
+      if (snap) {
+        snap.item_count++;
+        if (!item.in_stock) snap.items_out_of_stock++;
+      }
+    }
+  }
+
   return map;
 }
 

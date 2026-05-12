@@ -70,6 +70,14 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
             {swiggy && (
               <div className="text-[10px] text-gray-400">{latestAgo(swiggy)}</div>
             )}
+            {swiggy && swiggy.item_count > 0 && (
+              <div className="text-[10px] text-gray-400">
+                {swiggy.item_count} items
+                {swiggy.items_out_of_stock > 0 && (
+                  <span className="text-amber-600 font-medium"> · {swiggy.items_out_of_stock} OOS</span>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <span className="text-xs text-gray-300">—</span>
@@ -90,6 +98,14 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
             </span>
             {zomato && (
               <div className="text-[10px] text-gray-400">{latestAgo(zomato)}</div>
+            )}
+            {zomato && zomato.item_count > 0 && (
+              <div className="text-[10px] text-gray-400">
+                {zomato.item_count} items
+                {zomato.items_out_of_stock > 0 && (
+                  <span className="text-amber-600 font-medium"> · {zomato.items_out_of_stock} OOS</span>
+                )}
+              </div>
             )}
           </div>
         ) : (

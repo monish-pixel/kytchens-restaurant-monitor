@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* Force light mode — this app has no dark theme */
+:root {
+  color-scheme: light;
+}
+html {
+  background: #f9fafb;
+}
