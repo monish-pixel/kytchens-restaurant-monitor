@@ -38,7 +38,7 @@ async def fetch(restaurant_id: str, url_slug: str) -> dict:
         page = await context.new_page()
         page.on("response", on_response)
 
-        url = f"https://www.swiggy.com/city/{url_slug}"
+        url = f"https://www.swiggy.com/city/{url_slug}" if url_slug else f"https://www.swiggy.com/menu/{restaurant_id}"
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         await asyncio.sleep(6)
 
