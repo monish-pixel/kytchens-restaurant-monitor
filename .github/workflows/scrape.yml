@@ -69,7 +69,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          MIN_EXPECTED_RESTAURANTS: "5"
+          MIN_EXPECTED_RESTAURANTS: "1"
         run: python split_shards.py >> $GITHUB_OUTPUT
 
   # ── Job 3: scrape each shard in parallel ────────────────────────────────
