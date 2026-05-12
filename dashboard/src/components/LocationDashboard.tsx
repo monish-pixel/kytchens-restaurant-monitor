@@ -104,7 +104,7 @@ export default function LocationDashboard({
   const router = useRouter();
 
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 5 * 60 * 1000);
+    const id = setInterval(() => router.refresh(), 60 * 1000);
     return () => clearInterval(id);
   }, [router]);
 
@@ -119,6 +119,12 @@ export default function LocationDashboard({
 
   const activeAlerts = alerts.filter((a) => !a.acknowledged_at);
   const firstR = restaurants[0]?.restaurant;
+
+  // Most recent snapshot across all brands/platforms
+  const allSnaps = restaurants.flatMap(({ swiggy, zomato }) => [swiggy, zomato]).filter(Boolean) as Snapshot[];
+  const latestFetchedAt = allSnaps.length > 0
+    ? allSnaps.reduce((a, b) => (a.fetched_at > b.fetched_at ? a : b)).fetched_at
+    : null;
 
   return (
     <div
@@ -139,7 +145,16 @@ export default function LocationDashboard({
               <h1 className="text-xl font-bold text-gray-900">{firstR?.location}</h1>
               <p className="text-sm text-gray-500">{firstR?.city}</p>
             </div>
-            <div className="text-xs text-gray-400">Auto-refreshes every 5 min</div>
+            <div className="text-right">
+              {latestFetchedAt ? (
+                <div className="text-xs font-medium text-gray-600">
+                  Data from {formatDistanceToNow(new Date(latestFetchedAt), { addSuffix: true })}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400">No recent data</div>
+              )}
+              <div className="text-[10px] text-gray-400 mt-0.5">Auto-refreshes every 60s</div>
+            </div>
           </div>
         </div>
       </header>
