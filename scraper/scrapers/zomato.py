@@ -34,7 +34,16 @@ def parse(data: dict) -> dict:
     timing = basic.get("timing", {})
     order = data["page_data"]["order"]
 
-    is_open = timing.get("show_open_now", False)
+    # show_open_now is UTC-timezone-dependent and wrong from non-India IPs.
+    # res_status_text is the reliable field ("Open now" when accepting orders).
+    status_text = basic.get("res_status_text", "")
+    is_perm_closed = basic.get("is_perm_closed", False)
+    is_temp_closed = basic.get("is_temp_closed", False)
+    is_open = (
+        "open" in status_text.lower()
+        and not is_perm_closed
+        and not is_temp_closed
+    )
     timing_desc = timing.get("timing_desc", "")
     res_id = str(basic.get("res_id", ""))
 

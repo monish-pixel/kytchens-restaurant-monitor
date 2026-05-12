@@ -56,11 +56,12 @@ def test_zomato_is_valid_rejects_empty():
     assert not zomato.is_valid({"page_data": {}})
 
 
-def test_zomato_parse_returns_closed():
+def test_zomato_parse_returns_open():
     data = load("zomato_menu.json")
     parsed = zomato.parse(data)
     assert parsed["platform"] == "zomato"
-    assert parsed["is_open"] is False
+    # fixture has res_status_text="Open now" — correct field, not show_open_now (UTC-broken)
+    assert parsed["is_open"] is True
     assert parsed["item_count"] > 0
     assert parsed["timing_desc"] != ""
 

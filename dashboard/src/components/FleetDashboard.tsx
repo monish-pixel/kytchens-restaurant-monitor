@@ -27,9 +27,9 @@ type Props = {
 const C = {
   swiggy: "#FC8019",
   zomato: "#E23744",
-  online: "#22C55E",
-  offline: "#EF4444",
-  amber: "#F59E0B",
+  online: "#16a34a",
+  offline: "#dc2626",
+  amber: "#d97706",
 };
 
 function latestAgo(snap: Snapshot | null) {
@@ -50,10 +50,10 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
   return (
     <Link
       href={locationHref}
-      className="flex items-center gap-4 pl-10 pr-4 py-2.5 border-t border-[#1a1e2e] hover:bg-[#141928] transition-colors"
-      style={{ background: hasMismatch ? "#110a0a" : "#0b0d14" }}
+      className="flex items-center gap-4 pl-10 pr-4 py-2.5 border-t border-gray-100 hover:bg-gray-50 transition-colors"
+      style={{ background: hasMismatch ? "#fff9f0" : "white" }}
     >
-      <div className="flex-1 text-sm text-gray-300">{r.brand}</div>
+      <div className="flex-1 text-sm text-gray-700">{r.brand}</div>
 
       {/* Swiggy */}
       <div className="w-36">
@@ -62,18 +62,17 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
             <span
               className="text-xs font-bold"
               style={{
-                color:
-                  swiggyOpen === null ? "#4b5563" : swiggyOpen ? C.online : C.offline,
+                color: swiggyOpen === null ? "#9ca3af" : swiggyOpen ? C.online : C.offline,
               }}
             >
               {swiggyOpen === null ? "NO DATA" : swiggyOpen ? "ONLINE" : "OFFLINE"}
             </span>
             {swiggy && (
-              <div className="text-[10px] text-gray-600">{latestAgo(swiggy)}</div>
+              <div className="text-[10px] text-gray-400">{latestAgo(swiggy)}</div>
             )}
           </div>
         ) : (
-          <span className="text-xs text-gray-700">—</span>
+          <span className="text-xs text-gray-300">—</span>
         )}
       </div>
 
@@ -84,18 +83,17 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
             <span
               className="text-xs font-bold"
               style={{
-                color:
-                  zomatoOpen === null ? "#4b5563" : zomatoOpen ? C.online : C.offline,
+                color: zomatoOpen === null ? "#9ca3af" : zomatoOpen ? C.online : C.offline,
               }}
             >
               {zomatoOpen === null ? "NO DATA" : zomatoOpen ? "ONLINE" : "OFFLINE"}
             </span>
             {zomato && (
-              <div className="text-[10px] text-gray-600">{latestAgo(zomato)}</div>
+              <div className="text-[10px] text-gray-400">{latestAgo(zomato)}</div>
             )}
           </div>
         ) : (
-          <span className="text-xs text-gray-700">—</span>
+          <span className="text-xs text-gray-300">—</span>
         )}
       </div>
 
@@ -120,23 +118,23 @@ function LocationRow({ loc }: { loc: LocationData }) {
     <div
       className="rounded-lg overflow-hidden border"
       style={{
-        borderColor: hasIssues ? "#2e1515" : "#1a1e2e",
+        borderColor: hasIssues ? "#fca5a5" : "#e5e7eb",
       }}
     >
       <button
-        className="w-full flex items-center gap-4 px-4 py-3 text-left transition-colors"
+        className="w-full flex items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-gray-50"
         style={{
-          background: hasIssues ? "#150e0e" : "#0d0f18",
+          background: hasIssues ? "#fff5f5" : "#fafafa",
         }}
         onClick={() => setExpanded((v) => !v)}
       >
-        <span className="text-gray-600 text-[10px] w-3 flex-shrink-0">
+        <span className="text-gray-400 text-[10px] w-3 flex-shrink-0">
           {expanded ? "▼" : "▶"}
         </span>
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold text-white truncate">{loc.location}</span>
-          <span className="text-xs text-gray-600 flex-shrink-0">{loc.city}</span>
-          <span className="text-[11px] text-gray-700 flex-shrink-0">
+          <span className="text-sm font-semibold text-gray-900 truncate">{loc.location}</span>
+          <span className="text-xs text-gray-400 flex-shrink-0">{loc.city}</span>
+          <span className="text-[11px] text-gray-300 flex-shrink-0">
             · {loc.brands.length} brand{loc.brands.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -148,7 +146,7 @@ function LocationRow({ loc }: { loc: LocationData }) {
               ⚠ {loc.swiggyOfflineCount} offline
             </span>
           ) : (
-            <span style={{ color: C.online }} className="font-medium">
+            <span className="font-medium" style={{ color: C.online }}>
               ✓ Swiggy ok
             </span>
           )}
@@ -161,7 +159,7 @@ function LocationRow({ loc }: { loc: LocationData }) {
               ⚠ {loc.zomatoOfflineCount} offline
             </span>
           ) : (
-            <span style={{ color: C.online }} className="font-medium">
+            <span className="font-medium" style={{ color: C.online }}>
               ✓ Zomato ok
             </span>
           )}
@@ -180,18 +178,15 @@ function LocationRow({ loc }: { loc: LocationData }) {
       {expanded && (
         <div>
           {/* Sub-header */}
-          <div
-            className="flex items-center gap-4 pl-10 pr-4 py-2 border-t border-[#1a1e2e]"
-            style={{ background: "#08090f" }}
-          >
-            <div className="flex-1 text-[10px] text-gray-600 uppercase tracking-widest">Brand</div>
-            <div className="w-36 text-[10px] text-gray-600 uppercase tracking-widest">
-              <span style={{ color: C.swiggy }}>Swiggy</span>
+          <div className="flex items-center gap-4 pl-10 pr-4 py-2 border-t border-gray-100 bg-gray-50">
+            <div className="flex-1 text-[10px] text-gray-400 uppercase tracking-widest">Brand</div>
+            <div className="w-36 text-[10px] uppercase tracking-widest" style={{ color: C.swiggy }}>
+              Swiggy
             </div>
-            <div className="w-36 text-[10px] text-gray-600 uppercase tracking-widest">
-              <span style={{ color: C.zomato }}>Zomato</span>
+            <div className="w-36 text-[10px] uppercase tracking-widest" style={{ color: C.zomato }}>
+              Zomato
             </div>
-            <div className="w-28 text-[10px] text-gray-600 uppercase tracking-widest">Flags</div>
+            <div className="w-28 text-[10px] text-gray-400 uppercase tracking-widest">Flags</div>
           </div>
           {loc.brands.map((s) => (
             <BrandRow key={s.restaurant.id} s={s} locationHref={href} />
@@ -223,46 +218,33 @@ export default function FleetDashboard({
 
   return (
     <div
-      className="min-h-screen"
-      style={{ background: "#0f1117", fontFamily: "'Inter', system-ui, sans-serif" }}
+      className="min-h-screen bg-gray-50"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
     >
       {/* Top header */}
-      <header
-        className="border-b border-[#1a1e2e] px-6 py-4"
-        style={{ background: "#080a10" }}
-      >
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-base font-bold text-white tracking-tight">
+            <h1 className="text-base font-bold text-gray-900 tracking-tight">
               Kytchens Fleet Monitor
             </h1>
-            <p className="text-xs mt-0.5" style={{ color: "#4b5563" }}>
+            <p className="text-xs text-gray-400 mt-0.5">
               {total} listing{total !== 1 ? "s" : ""} · refreshes every 60s
             </p>
           </div>
-          <div className="flex items-center gap-5 text-sm">
+          <div className="flex items-center gap-5">
             <span className="flex items-center gap-1.5">
-              <span
-                className="w-2 h-2 rounded-full inline-block"
-                style={{ background: C.online }}
-              />
-              <span className="font-semibold text-xs" style={{ color: C.online }}>
-                {totalOnline} online
-              </span>
+              <span className="w-2 h-2 rounded-full inline-block bg-green-500" />
+              <span className="font-semibold text-xs text-green-700">{totalOnline} online</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span
-                className="w-2 h-2 rounded-full inline-block"
-                style={{ background: C.offline }}
-              />
-              <span className="font-semibold text-xs" style={{ color: C.offline }}>
-                {totalOffline} offline
-              </span>
+              <span className="w-2 h-2 rounded-full inline-block bg-red-500" />
+              <span className="font-semibold text-xs text-red-700">{totalOffline} offline</span>
             </span>
             {totalStale > 0 && (
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-gray-700 inline-block" />
-                <span className="text-xs text-gray-600">{totalStale} stale</span>
+                <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
+                <span className="text-xs text-gray-400">{totalStale} stale</span>
               </span>
             )}
           </div>
@@ -270,18 +252,15 @@ export default function FleetDashboard({
       </header>
 
       {/* City tabs */}
-      <div
-        className="border-b border-[#1a1e2e] px-6"
-        style={{ background: "#080a10" }}
-      >
+      <div className="bg-white border-b border-gray-200 px-6">
         <div className="max-w-7xl mx-auto flex overflow-x-auto">
           {["All", ...cities].map((city) => (
             <button
               key={city}
               className="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap"
               style={{
-                borderColor: selectedCity === city ? "#3b82f6" : "transparent",
-                color: selectedCity === city ? "#fff" : "#6b7280",
+                borderColor: selectedCity === city ? "#2563eb" : "transparent",
+                color: selectedCity === city ? "#1d4ed8" : "#6b7280",
               }}
               onClick={() => setSelectedCity(city)}
             >
@@ -295,35 +274,33 @@ export default function FleetDashboard({
       <main className="max-w-7xl mx-auto px-6 py-5">
         {filtered.length > 0 && (
           <div className="flex items-center gap-4 px-4 pb-2 mb-1">
-            <div className="flex-1 text-[10px] text-gray-700 uppercase tracking-widest pl-7">
+            <div className="flex-1 text-[10px] text-gray-400 uppercase tracking-widest pl-7">
               Location
             </div>
-            <div className="w-36 text-[10px] text-gray-700 uppercase tracking-widest">
-              <span style={{ color: C.swiggy }}>Swiggy</span>
+            <div className="w-36 text-[10px] uppercase tracking-widest" style={{ color: C.swiggy }}>
+              Swiggy
             </div>
-            <div className="w-36 text-[10px] text-gray-700 uppercase tracking-widest">
-              <span style={{ color: C.zomato }}>Zomato</span>
+            <div className="w-36 text-[10px] uppercase tracking-widest" style={{ color: C.zomato }}>
+              Zomato
             </div>
-            <div className="w-28 text-[10px] text-gray-700 uppercase tracking-widest">Flags</div>
+            <div className="w-28 text-[10px] text-gray-400 uppercase tracking-widest">Flags</div>
           </div>
         )}
 
         <div className="space-y-2">
           {filtered.length === 0 ? (
-            <div className="text-center py-24 text-gray-600 text-sm">
+            <div className="text-center py-24 text-gray-400 text-sm">
               No active restaurants found.
               <br />
-              <span className="text-gray-700 text-xs mt-1 block">
+              <span className="text-gray-300 text-xs mt-1 block">
                 Add entries to the Google Sheet and run a sync.
               </span>
             </div>
           ) : (
             filtered
               .sort((a, b) => {
-                const aHasIssues =
-                  a.swiggyOfflineCount > 0 || a.zomatoOfflineCount > 0 ? 0 : 1;
-                const bHasIssues =
-                  b.swiggyOfflineCount > 0 || b.zomatoOfflineCount > 0 ? 0 : 1;
+                const aHasIssues = a.swiggyOfflineCount > 0 || a.zomatoOfflineCount > 0 ? 0 : 1;
+                const bHasIssues = b.swiggyOfflineCount > 0 || b.zomatoOfflineCount > 0 ? 0 : 1;
                 return aHasIssues - bHasIssues;
               })
               .map((loc) => (

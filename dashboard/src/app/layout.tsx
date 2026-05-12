@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased" style={{ background: "#0f1117" }}>
+      <body className="antialiased bg-gray-50">
         {children}
       </body>
     </html>
