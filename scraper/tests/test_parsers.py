@@ -25,13 +25,13 @@ def test_swiggy_is_valid_rejects_empty():
     assert not swiggy.is_valid({"data": {"cards": []}})
 
 
-def test_swiggy_parse_returns_closed():
+def test_swiggy_parse_returns_open():
     data = load("swiggy_menu.json")
     parsed = swiggy.parse(data)
     assert parsed["platform"] == "swiggy"
-    assert parsed["is_open"] is False  # fixture captured at midnight, restaurant closed
+    assert parsed["is_open"] is True  # fixture updated to open state (opened: true)
     assert parsed["item_count"] > 0
-    assert parsed["next_open_message"] is not None
+    assert parsed["next_open_message"] is None
 
 
 def test_swiggy_parse_items_have_required_fields():

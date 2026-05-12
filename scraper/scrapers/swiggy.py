@@ -102,7 +102,13 @@ def parse(data: dict) -> dict:
 
     avail = restaurant_info.get("availability", {})
     next_open = avail.get("nextOpenTime")
-    is_open = next_open is None  # if nextOpenTime present → currently closed
+    opened = avail.get("opened")
+    # "opened" is the explicit server-side field (True when accepting orders).
+    # Fall back to nextOpenTime absence check for older response shapes.
+    if opened is not None:
+        is_open = bool(opened)
+    else:
+        is_open = next_open is None
 
     return {
         "platform": "swiggy",
