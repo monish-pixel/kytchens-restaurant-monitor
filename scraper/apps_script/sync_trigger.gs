@@ -1,24 +1,26 @@
 /**
  * Google Apps Script: trigger GH Actions scrape workflow on Sheets edits.
  *
- * Setup:
- *  1. Open your Google Sheet → Extensions → Apps Script
- *  2. Paste this file content
- *  3. Project Settings → Script Properties → add:
- *       GITHUB_PAT   = ghp_xxxxxxxxxxxxxxxxxxxx  (repo + workflow scope)
- *       GITHUB_OWNER = your-github-org-or-username
- *       GITHUB_REPO  = restaurant-monitor
- *  4. Triggers → Add Trigger:
+ * Setup (one-time):
+ *  1. Open the Google Sheet → Extensions → Apps Script
+ *  2. Paste this file (replacing default code)
+ *  3. Project Settings (gear icon) → Script Properties → Add property:
+ *       GITHUB_PAT = ghp_xxxxxxxxxxxxxxxxxxxx
+ *       (create at github.com/settings/tokens → repo + workflow scopes)
+ *  4. Triggers (clock icon) → Add Trigger:
  *       Function: onSheetEdit
- *       Event: From spreadsheet → On edit
- *  5. (Optional) add a "Force Sync" button:
- *       Insert → Drawing → create a button shape
- *       Assign script: forceSyncNow
+ *       Event source: From spreadsheet
+ *       Event type: On edit
+ *  5. Optional "Force Sync" button:
+ *       Insert → Drawing → draw a button → Save
+ *       Click the button's ... menu → Assign script → forceSyncNow
  */
 
+var GITHUB_OWNER = "monish-pixel";
+var GITHUB_REPO  = "kytchens-restaurant-monitor";
 var WATCHED_SHEETS = ["Restaurant Master", "Items Master"];
 var WORKFLOW_FILE = "scrape.yml";
-var DEBOUNCE_SECONDS = 30; // ignore repeated edits within this window
+var DEBOUNCE_SECONDS = 30;
 
 /**
  * onEdit trigger: fires on any cell change in the spreadsheet.
@@ -55,15 +57,14 @@ function forceSyncNow() {
 function _dispatchWorkflow(inputs) {
   var props = PropertiesService.getScriptProperties();
   var pat = props.getProperty("GITHUB_PAT");
-  var owner = props.getProperty("GITHUB_OWNER");
-  var repo = props.getProperty("GITHUB_REPO");
 
-  if (!pat || !owner || !repo) {
-    Logger.log("ERROR: GITHUB_PAT, GITHUB_OWNER, or GITHUB_REPO not set in Script Properties");
+  if (!pat) {
+    Logger.log("ERROR: GITHUB_PAT not set in Script Properties");
+    SpreadsheetApp.getUi().alert("Missing GITHUB_PAT in Script Properties. See setup instructions.");
     return;
   }
 
-  var url = "https://api.github.com/repos/" + owner + "/" + repo +
+  var url = "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO +
             "/actions/workflows/" + WORKFLOW_FILE + "/dispatches";
 
   var payload = JSON.stringify({
