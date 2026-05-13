@@ -2,14 +2,21 @@ name: Restaurant Monitor
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes
+    - cron: "0,30 * * * *"   # every 30 minutes (explicit offsets avoid GH scheduler drift)
   workflow_dispatch:           # manual trigger + Apps Script Force Sync
+
+# Cancel any in-progress run when a new one starts — prevents a stuck run from
+# blocking the next cycle and causing the 6h+ delays seen previously.
+concurrency:
+  group: restaurant-monitor
+  cancel-in-progress: true
 
 jobs:
   # ── Job 1: sync Google Sheets → Supabase ────────────────────────────────
   sync:
     name: Sync Sheets
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       sync_ok: ${{ steps.sync.outputs.sync_ok }}
     steps:
@@ -23,13 +30,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r scraper/requirements.txt
-
-      - name: Migrate swiggy slugs (one-time)
-        working-directory: scraper
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python migrate_swiggy_slugs.py || true
 
       - name: Sync Google Sheets to Supabase
         id: sync
@@ -56,6 +56,7 @@ jobs:
     name: Split Shards
     needs: sync
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.split.outputs.matrix }}
     steps:
@@ -84,6 +85,7 @@ jobs:
     name: "Scrape shard ${{ matrix.shard_index }}"
     needs: split
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.split.outputs.matrix) }}
@@ -122,6 +124,7 @@ jobs:
     name: Summarize Alerts
     needs: scrape
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
     steps:
       - uses: actions/checkout@v4

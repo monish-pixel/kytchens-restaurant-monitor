@@ -57,12 +57,12 @@ export type RestaurantStatus = {
   zomato: Snapshot | null;
 };
 
-// Returns latest snapshot per (platform, restaurant_id) from the last 2h.
+// Returns latest snapshot per (platform, restaurant_id) from the last 6h.
 // Supabase JS doesn't support DISTINCT ON, so we fetch recent rows and
-// deduplicate in JS. At ≤450 restaurants × 2 platforms × 4 cycles = ~3,600
+// deduplicate in JS. At ≤450 restaurants × 2 platforms × 12 cycles = ~10,800
 // rows max — well within a single round-trip.
 async function getLatestSnapshots(): Promise<Map<string, Snapshot>> {
-  const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("snapshots")
     .select("id, platform, restaurant_id, is_open, fetched_at")
