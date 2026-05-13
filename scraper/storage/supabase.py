@@ -45,6 +45,9 @@ def save_snapshot(parsed: dict, raw: dict, restaurant: dict | None = None) -> bo
     prev = get_latest(platform, restaurant_id)
     if prev is not None:
         if prev.get("is_open") == is_open and prev.get("menu_checksum") == new_checksum:
+            client.table("snapshots").update(
+                {"fetched_at": datetime.utcnow().isoformat()}
+            ).eq("id", prev["id"]).execute()
             return False
 
     brand = (restaurant or {}).get("brand") or parsed.get("brand")
