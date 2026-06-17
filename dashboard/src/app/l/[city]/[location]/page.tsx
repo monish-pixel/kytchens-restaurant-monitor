@@ -19,6 +19,7 @@ export default async function LocationPage({ params }: Props) {
       restaurants={data.restaurants}
       statusChanges={data.statusChanges}
       alerts={data.alerts}
+      uptimeHistory={data.uptimeHistory}
     />
   );
 }

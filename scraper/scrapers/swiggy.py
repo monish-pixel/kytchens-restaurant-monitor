@@ -42,23 +42,29 @@ async def fetch(restaurant_id: str, url_slug: str) -> dict:
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         await asyncio.sleep(6)
 
-        # If we got data but it shows closed, re-fetch the API URL with explicit
-        # Pune lat/lng — Swiggy computes open/closed server-side based on IP geolocation,
-        # so a US server IP may return wrong closed status for IST-based restaurants.
-        if captured.get("data") and captured_api_url.get("url"):
-            api_url = captured_api_url["url"]
-            if "lat=" in api_url and "lng=" in api_url:
-                import re
-                api_url = re.sub(r"lat=[^&]+", "lat=18.5204", api_url)
-                api_url = re.sub(r"lng=[^&]+", "lng=73.8567", api_url)
-                try:
-                    resp = await page.request.get(api_url)
-                    if resp.ok:
-                        body = await resp.json()
-                        if is_valid(body):
-                            captured["data"] = body
-                except Exception:
-                    pass
+        # Always re-fetch the API URL with explicit Pune lat/lng.
+        # Swiggy computes open/closed server-side based on the lat/lng in the request,
+        # not the client IP — so we must override to get the Pune customer's view.
+        import re as _re
+        api_url = captured_api_url.get("url", "")
+        if not api_url and restaurant_id:
+            # fallback: construct the mobile API URL directly
+            api_url = (
+                f"https://www.swiggy.com/mapi/menu/pl"
+                f"?page-type=REGULAR_MENU&complete-menu=true"
+                f"&lat=18.5204&lng=73.8567&restaurantId={restaurant_id}"
+            )
+        if api_url:
+            api_url = _re.sub(r"lat=[^&]+", "lat=18.5204", api_url)
+            api_url = _re.sub(r"lng=[^&]+", "lng=73.8567", api_url)
+            try:
+                resp = await page.request.get(api_url)
+                if resp.ok:
+                    body = await resp.json()
+                    if is_valid(body):
+                        captured["data"] = body
+            except Exception:
+                pass
 
         await browser.close()
 

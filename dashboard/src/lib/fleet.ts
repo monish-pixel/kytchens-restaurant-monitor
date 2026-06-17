@@ -51,6 +51,11 @@ export type Alert = {
   acknowledged_at: string | null;
 };
 
+// slot = 0..167 (hour index over 7 days, 0 = oldest)
+// "online" | "offline" | "unknown"
+export type UptimeSlot = "online" | "offline" | "unknown";
+export type UptimeHistory = Record<string, UptimeSlot[]>; // key = "platform:restaurant_id"
+
 export type RestaurantStatus = {
   restaurant: Restaurant;
   swiggy: Snapshot | null;
@@ -157,6 +162,81 @@ export async function getFleetStatus(): Promise<{
   return { byCity, totalOnline, totalOffline, totalStale };
 }
 
+export async function getUptimeHistory(restaurantIds: string[]): Promise<UptimeHistory> {
+  if (!restaurantIds.length) return {};
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const nowMs = Date.now();
+  const slots = 7 * 24; // 168 hourly slots
+
+  const { data: changes } = await supabase
+    .from("status_changes")
+    .select("platform, restaurant_id, curr_open, changed_at")
+    .in("restaurant_id", restaurantIds)
+    .gte("changed_at", sevenDaysAgo)
+    .order("changed_at", { ascending: true });
+
+  // Also get current snapshot to know latest state
+  const { data: latestSnaps } = await supabase
+    .from("snapshots")
+    .select("platform, restaurant_id, is_open, fetched_at")
+    .in("restaurant_id", restaurantIds)
+    .order("fetched_at", { ascending: false });
+
+  // Build latest state per key
+  const latestState = new Map<string, boolean>();
+  for (const s of latestSnaps ?? []) {
+    const k = `${s.platform}:${s.restaurant_id}`;
+    if (!latestState.has(k)) latestState.set(k, s.is_open);
+  }
+
+  // Group changes by key
+  const byKey = new Map<string, typeof changes>();
+  for (const c of changes ?? []) {
+    const k = `${c.platform}:${c.restaurant_id}`;
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k)!.push(c);
+  }
+
+  const result: UptimeHistory = {};
+
+  for (const [key, keyChanges] of byKey.entries()) {
+    const slotArr: UptimeSlot[] = new Array(slots).fill("unknown");
+
+    // Walk backwards from now, filling slots based on status changes
+    let currentState = latestState.get(key) ?? true;
+    let cursor = nowMs;
+
+    const events = [...(keyChanges ?? [])].reverse(); // newest first
+
+    for (let i = slots - 1; i >= 0; i--) {
+      const slotStart = nowMs - (slots - i) * 3600000;
+      const slotEnd = slotStart + 3600000;
+
+      // Apply any status changes that happened during this slot
+      while (events.length > 0) {
+        const t = new Date(events[0].changed_at).getTime();
+        if (t >= slotStart && t < slotEnd) {
+          // This change happened in this slot — state before change was prev_open
+          currentState = events[0].curr_open;
+          events.shift();
+        } else if (t < slotStart) {
+          currentState = events[0].curr_open;
+          events.shift();
+        } else {
+          break;
+        }
+      }
+
+      slotArr[i] = currentState ? "online" : "offline";
+    }
+
+    result[key] = slotArr;
+  }
+
+  return result;
+}
+
 export async function getLocationStatus(
   citySlug: string,
   locationSlug: string
@@ -164,6 +244,7 @@ export async function getLocationStatus(
   restaurants: RestaurantStatus[];
   statusChanges: StatusChange[];
   alerts: Alert[];
+  uptimeHistory: UptimeHistory;
 } | null> {
   const { data: restaurants, error } = await supabase
     .from("restaurants")
@@ -199,7 +280,7 @@ export async function getLocationStatus(
     ),
   ] as string[];
 
-  const [{ data: statusChanges }, { data: alerts }] = await Promise.all([
+  const [{ data: statusChanges }, { data: alerts }, uptimeHistory] = await Promise.all([
     supabase
       .from("status_changes")
       .select("id,platform,prev_open,curr_open,changed_at,restaurant_id")
@@ -213,11 +294,13 @@ export async function getLocationStatus(
       .is("acknowledged_at", null)
       .order("created_at", { ascending: false })
       .limit(10),
+    getUptimeHistory(restaurantIds),
   ]);
 
   return {
     restaurants: statuses,
     statusChanges: (statusChanges ?? []) as StatusChange[],
     alerts: (alerts ?? []) as Alert[],
+    uptimeHistory,
   };
 }

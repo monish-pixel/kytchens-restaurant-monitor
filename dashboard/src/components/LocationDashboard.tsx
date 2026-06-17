@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import type { Restaurant, Snapshot, MenuItem, StatusChange, Alert } from "@/lib/fleet";
+import type { Restaurant, Snapshot, MenuItem, StatusChange, Alert, UptimeSlot, UptimeHistory } from "@/lib/fleet";
+import { supabase } from "@/lib/supabase";
 
 type RestaurantStatus = {
   restaurant: Restaurant;
@@ -16,7 +17,28 @@ type Props = {
   restaurants: RestaurantStatus[];
   statusChanges: StatusChange[];
   alerts: Alert[];
+  uptimeHistory: UptimeHistory;
 };
+
+function UptimeSparkline({ slots }: { slots: UptimeSlot[] }) {
+  const W = 4, H = 16, GAP = 1;
+  const totalW = slots.length * (W + GAP) - GAP;
+  return (
+    <svg width={totalW} height={H} style={{ display: "block" }}>
+      {slots.map((slot, i) => (
+        <rect
+          key={i}
+          x={i * (W + GAP)}
+          y={0}
+          width={W}
+          height={H}
+          fill={slot === "online" ? "#16a34a" : slot === "offline" ? "#dc2626" : "#d1d5db"}
+          rx={1}
+        />
+      ))}
+    </svg>
+  );
+}
 
 function LiveItemsList({ snap }: { snap: Snapshot | null }) {
   if (!snap || snap.items.length === 0) return null;
@@ -105,13 +127,28 @@ export default function LocationDashboard({
   restaurants,
   statusChanges,
   alerts,
+  uptimeHistory,
 }: Props) {
   const router = useRouter();
+  const [dismissing, setDismissing] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => router.refresh(), 60 * 1000);
     return () => clearInterval(id);
   }, [router]);
+
+  async function dismissAllAlerts() {
+    setDismissing(true);
+    const ids = activeAlerts.map((a) => a.id);
+    if (ids.length > 0) {
+      await supabase
+        .from("alerts")
+        .update({ acknowledged_at: new Date().toISOString() })
+        .in("id", ids);
+    }
+    setDismissing(false);
+    router.refresh();
+  }
 
   const swiggyBrands = restaurants.filter((s) => s.restaurant.should_be_live_swiggy).length;
   const zomatoBrands = restaurants.filter((s) => s.restaurant.should_be_live_zomato).length;
@@ -168,11 +205,20 @@ export default function LocationDashboard({
         {/* Active alarm banner */}
         {activeAlerts.length > 0 && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm font-bold text-red-700">🔔 ALARM</span>
-              <span className="text-sm text-red-600">
-                {activeAlerts.length} active alert{activeAlerts.length !== 1 ? "s" : ""}
-              </span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-red-700">🔔 ALARM</span>
+                <span className="text-sm text-red-600">
+                  {activeAlerts.length} active alert{activeAlerts.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <button
+                onClick={dismissAllAlerts}
+                disabled={dismissing}
+                className="text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5 hover:bg-red-100 transition-colors disabled:opacity-50"
+              >
+                {dismissing ? "Dismissing…" : "Dismiss all"}
+              </button>
             </div>
             {activeAlerts.map((a) => (
               <div key={a.id} className="text-xs text-red-700 mt-1">
@@ -261,6 +307,12 @@ export default function LocationDashboard({
                           )}
                         </div>
                       )}
+                      {r.swiggy_id && uptimeHistory[`swiggy:${r.swiggy_id}`] && (
+                        <div className="mt-1.5">
+                          <UptimeSparkline slots={uptimeHistory[`swiggy:${r.swiggy_id}`]} />
+                          <div className="text-[9px] text-gray-300 mt-0.5">7d</div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-300">Not active</span>
@@ -291,6 +343,12 @@ export default function LocationDashboard({
                           {zomato.items_out_of_stock > 0 && (
                             <span className="text-amber-600 font-medium"> · {zomato.items_out_of_stock} OOS</span>
                           )}
+                        </div>
+                      )}
+                      {r.zomato_slug && uptimeHistory[`zomato:${r.zomato_slug}`] && (
+                        <div className="mt-1.5">
+                          <UptimeSparkline slots={uptimeHistory[`zomato:${r.zomato_slug}`]} />
+                          <div className="text-[9px] text-gray-300 mt-0.5">7d</div>
                         </div>
                       )}
                     </div>

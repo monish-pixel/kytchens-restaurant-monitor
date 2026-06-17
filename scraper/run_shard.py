@@ -64,18 +64,25 @@ async def poll_swiggy_for(restaurant: dict):
         return
 
     label = f"{restaurant.get('brand')} @ {restaurant.get('location')} [swiggy]"
-    try:
-        raw = await swiggy.fetch(swiggy_id, swiggy_slug)
-        if not swiggy.is_valid(raw):
-            raise ValueError("invalid response shape")
-        parsed = swiggy.parse(raw)
-        parsed["restaurant_id"] = swiggy_id
-        status = "OPEN" if parsed["is_open"] else f"CLOSED ({parsed.get('next_open_message', '')})"
-        log(f"[Swiggy] {label} — {status} | {parsed['item_count']} items")
-        _alert(parsed, restaurant)
-        _save(parsed, raw, restaurant)
-    except Exception as e:
-        log(f"[Swiggy FAIL] {label} — {e}")
+    delays = [5, 10]
+    for attempt in range(3):
+        try:
+            raw = await swiggy.fetch(swiggy_id, swiggy_slug)
+            if not swiggy.is_valid(raw):
+                raise ValueError("invalid response shape")
+            parsed = swiggy.parse(raw)
+            parsed["restaurant_id"] = swiggy_id
+            status = "OPEN" if parsed["is_open"] else f"CLOSED ({parsed.get('next_open_message', '')})"
+            log(f"[Swiggy] {label} — {status} | {parsed['item_count']} items")
+            _alert(parsed, restaurant)
+            _save(parsed, raw, restaurant)
+            return
+        except Exception as e:
+            if attempt < 2:
+                log(f"[Swiggy RETRY {attempt+1}] {label} — {e}")
+                await asyncio.sleep(delays[attempt])
+            else:
+                log(f"[Swiggy FAIL] {label} — {e}")
 
 
 def poll_zomato_for(restaurant: dict):
@@ -84,18 +91,25 @@ def poll_zomato_for(restaurant: dict):
         return
 
     label = f"{restaurant.get('brand')} @ {restaurant.get('location')} [zomato]"
-    try:
-        raw = zomato.fetch(zomato_slug)
-        if not zomato.is_valid(raw):
-            raise ValueError("invalid response shape")
-        parsed = zomato.parse(raw)
-        parsed["restaurant_id"] = zomato_slug
-        status = "OPEN" if parsed["is_open"] else f"CLOSED ({parsed.get('timing_desc', '')})"
-        log(f"[Zomato] {label} — {status} | {parsed['item_count']} items")
-        _alert(parsed, restaurant)
-        _save(parsed, raw, restaurant)
-    except Exception as e:
-        log(f"[Zomato FAIL] {label} — {e}")
+    delays = [5, 10]
+    for attempt in range(3):
+        try:
+            raw = zomato.fetch(zomato_slug)
+            if not zomato.is_valid(raw):
+                raise ValueError("invalid response shape")
+            parsed = zomato.parse(raw)
+            parsed["restaurant_id"] = zomato_slug
+            status = "OPEN" if parsed["is_open"] else f"CLOSED ({parsed.get('timing_desc', '')})"
+            log(f"[Zomato] {label} — {status} | {parsed['item_count']} items")
+            _alert(parsed, restaurant)
+            _save(parsed, raw, restaurant)
+            return
+        except Exception as e:
+            if attempt < 2:
+                log(f"[Zomato RETRY {attempt+1}] {label} — {e}")
+                import time; time.sleep(delays[attempt])
+            else:
+                log(f"[Zomato FAIL] {label} — {e}")
 
 
 async def poll_restaurant(restaurant: dict):
