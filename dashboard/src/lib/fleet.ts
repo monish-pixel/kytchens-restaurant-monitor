@@ -304,3 +304,148 @@ export async function getLocationStatus(
     uptimeHistory,
   };
 }
+
+// Categories that are platform-curated/algorithmic — not part of a brand's fixed menu.
+// Items in these categories differ per platform by design, so we skip them in cross-platform comparison.
+const RECOMMENDED_CATEGORIES = new Set([
+  "recommended", "bestseller", "bestsellers", "most ordered", "top picks",
+  "popular", "trending", "featured", "must try", "chef's special",
+  "chef's choice", "top rated", "special", "combos", "add-ons", "add ons",
+]);
+
+function isRecommendedCategory(cat: string | null): boolean {
+  if (!cat) return false;
+  return RECOMMENDED_CATEGORIES.has(cat.toLowerCase().trim());
+}
+
+function normalizeItemName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+export type MenuItemFlag = {
+  name: string;
+  category: string | null;
+  onSwiggy: boolean;
+  onZomato: boolean;
+};
+
+export type BrandMenuComparison = {
+  restaurantId: number;
+  brand: string;
+  location: string;
+  city: string;
+  swiggyId: string | null;
+  zomatoSlug: string | null;
+  swiggyTotal: number;
+  zomatoTotal: number;
+  missingFromZomato: MenuItemFlag[];
+  missingFromSwiggy: MenuItemFlag[];
+  inBoth: number;
+  hasDiscrepancy: boolean;
+};
+
+export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
+  // Fetch all active restaurants
+  const { data: restaurants, error } = await supabase
+    .from("restaurants")
+    .select("id,brand,location,city,swiggy_id,swiggy_slug,zomato_slug,should_be_live_swiggy,should_be_live_zomato")
+    .eq("active", true)
+    .order("brand");
+
+  if (error) throw new Error(`restaurants query failed: ${error.message}`);
+
+  // Collect all restaurant IDs for batch snapshot lookup
+  const swiggyIds = (restaurants ?? []).map(r => r.swiggy_id).filter(Boolean) as string[];
+  const zomatoIds = (restaurants ?? []).map(r => r.zomato_slug).filter(Boolean) as string[];
+  const allIds = [...swiggyIds, ...zomatoIds];
+  if (!allIds.length) return [];
+
+  // Get latest snapshot IDs per platform+restaurant
+  const { data: snapshots } = await supabase
+    .from("snapshots")
+    .select("id,platform,restaurant_id,fetched_at")
+    .in("restaurant_id", allIds)
+    .order("fetched_at", { ascending: false });
+
+  // Keep only the latest snapshot per (platform, restaurant_id)
+  const latestSnap = new Map<string, number>(); // key → snapshot_id
+  for (const s of snapshots ?? []) {
+    const key = `${s.platform}:${s.restaurant_id}`;
+    if (!latestSnap.has(key)) latestSnap.set(key, s.id);
+  }
+
+  const snapIds = [...latestSnap.values()];
+  if (!snapIds.length) return [];
+
+  // Fetch all menu items for those snapshots
+  const { data: items } = await supabase
+    .from("menu_items")
+    .select("snapshot_id,name,category,in_stock,is_enabled")
+    .in("snapshot_id", snapIds);
+
+  // Build item sets per (platform, restaurant_id) — fixed menu only
+  const itemsBySnap = new Map<number, Array<{ name: string; category: string | null }>>();
+  for (const item of items ?? []) {
+    if (!item.name) continue;
+    if (isRecommendedCategory(item.category)) continue;
+    if (!item.is_enabled) continue;
+    if (!itemsBySnap.has(item.snapshot_id)) itemsBySnap.set(item.snapshot_id, []);
+    itemsBySnap.get(item.snapshot_id)!.push({ name: item.name, category: item.category });
+  }
+
+  // Compare per restaurant
+  const results: BrandMenuComparison[] = [];
+
+  for (const r of restaurants ?? []) {
+    if (!r.swiggy_id || !r.zomato_slug) continue;
+    if (!r.should_be_live_swiggy || !r.should_be_live_zomato) continue;
+
+    const swiggySnapId = latestSnap.get(`swiggy:${r.swiggy_id}`);
+    const zomatoSnapId = latestSnap.get(`zomato:${r.zomato_slug}`);
+    if (!swiggySnapId || !zomatoSnapId) continue;
+
+    const swiggyItems = itemsBySnap.get(swiggySnapId) ?? [];
+    const zomatoItems = itemsBySnap.get(zomatoSnapId) ?? [];
+
+    // Build normalized name maps
+    const swiggyMap = new Map<string, { name: string; category: string | null }>();
+    for (const i of swiggyItems) swiggyMap.set(normalizeItemName(i.name), i);
+
+    const zomatoMap = new Map<string, { name: string; category: string | null }>();
+    for (const i of zomatoItems) zomatoMap.set(normalizeItemName(i.name), i);
+
+    const missingFromZomato: MenuItemFlag[] = [];
+    const missingFromSwiggy: MenuItemFlag[] = [];
+    let inBoth = 0;
+
+    for (const [norm, item] of swiggyMap) {
+      if (zomatoMap.has(norm)) inBoth++;
+      else missingFromZomato.push({ name: item.name, category: item.category, onSwiggy: true, onZomato: false });
+    }
+    for (const [norm, item] of zomatoMap) {
+      if (!swiggyMap.has(norm))
+        missingFromSwiggy.push({ name: item.name, category: item.category, onSwiggy: false, onZomato: true });
+    }
+
+    results.push({
+      restaurantId: r.id,
+      brand: r.brand,
+      location: r.location,
+      city: r.city,
+      swiggyId: r.swiggy_id,
+      zomatoSlug: r.zomato_slug,
+      swiggyTotal: swiggyItems.length,
+      zomatoTotal: zomatoItems.length,
+      missingFromZomato,
+      missingFromSwiggy,
+      inBoth,
+      hasDiscrepancy: missingFromZomato.length > 0 || missingFromSwiggy.length > 0,
+    });
+  }
+
+  return results.sort((a, b) => {
+    const aIssue = a.hasDiscrepancy ? 0 : 1;
+    const bIssue = b.hasDiscrepancy ? 0 : 1;
+    return aIssue - bIssue || a.brand.localeCompare(b.brand);
+  });
+}
