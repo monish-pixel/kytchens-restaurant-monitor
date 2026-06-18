@@ -319,7 +319,24 @@ function isRecommendedCategory(cat: string | null): boolean {
 }
 
 function normalizeItemName(name: string): string {
-  return name.toLowerCase().trim().replace(/\s+/g, " ");
+  let n = name.trim();
+
+  // Strip weight/quantity suffixes in brackets or parens:
+  // [120 grams], (120gms), [65 g], (80gms), (8 Pcs), [45 grams], etc.
+  n = n.replace(/\s*[\[(][^)\]]*\d+\s*(?:gm?s?|grams?|kg|ml|l|pcs?|pieces?)[^)\]]*[\])]/gi, "");
+
+  // Strip stray trailing brackets/parens left over (e.g. "Jar (120gms)]" → "Jar ]" → "Jar")
+  n = n.replace(/[\[\]()]+$/, "");
+
+  // Strip platform descriptor suffixes after a dash: "- Gluten Free, Vegan", "- Sugar Free"
+  // These vary per platform and don't represent different items
+  n = n.replace(/\s*[-–]\s*(gluten.?free|vegan|dairy.?free|sugar.?free)[^,]*$/i, "");
+
+  // Trailing punctuation (Zomato appends "." to many item names)
+  n = n.replace(/[.\s]+$/, "");
+
+  // Normalize whitespace and lowercase
+  return n.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 export type MenuItemFlag = {
