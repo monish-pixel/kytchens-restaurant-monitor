@@ -166,7 +166,8 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
   const [selectedCity, setSelectedCity] = useState("All");
 
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 60_000);
+    // Refresh every 30 min — matches scraper cadence. More frequent is pointless.
+    const id = setInterval(() => router.refresh(), 30 * 60 * 1000);
     return () => clearInterval(id);
   }, [router]);
 
@@ -188,7 +189,7 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
             <h1 className="text-lg font-bold text-gray-900">Store Live</h1>
             <p className="text-xs text-gray-400 mt-0.5">Real-time listing status across all platforms</p>
           </div>
-          <div className="text-xs text-gray-400">Auto-refreshes every 60s</div>
+          <div className="text-xs text-gray-400">Scraper runs every 30 min</div>
         </div>
 
         {/* Summary KPI strip */}
