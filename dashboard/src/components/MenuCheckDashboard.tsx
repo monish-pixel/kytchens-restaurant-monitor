@@ -27,6 +27,12 @@ function ItemPill({ item, missingFrom }: { item: MenuItemFlag; missingFrom: "swi
   );
 }
 
+const LEVEL_CHIP = {
+  synced: { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0", label: "✓ Synced" },
+  minor:  { bg: "#fffbeb", color: "#d97706", border: "#fde68a", label: "~ Minor drift" },
+  major:  { bg: "#fff1f2", color: "#dc2626", border: "#fecaca", label: "⚠ Mismatch" },
+};
+
 function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [tab, setTab] = useState<"zomato" | "swiggy">("zomato");
@@ -35,12 +41,18 @@ function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: bo
   const missingSwiggyCount = c.missingFromSwiggy.length;
   const currentItems = tab === "zomato" ? c.missingFromZomato : c.missingFromSwiggy;
 
+  const chip = LEVEL_CHIP[c.discrepancyLevel];
+  const countDiff = Math.abs(c.swiggyTotal - c.zomatoTotal);
+  const diffPct = Math.max(c.swiggyTotal, c.zomatoTotal) > 0
+    ? Math.round((countDiff / Math.max(c.swiggyTotal, c.zomatoTotal)) * 100)
+    : 0;
+
   return (
     <div className="bg-white rounded-xl border overflow-hidden"
-      style={{ borderColor: c.hasDiscrepancy ? "#fca5a5" : "#e5e7eb" }}>
+      style={{ borderColor: c.discrepancyLevel === "major" ? "#fca5a5" : c.discrepancyLevel === "minor" ? "#fde68a" : "#e5e7eb" }}>
 
       <button className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50/50"
-        style={{ background: c.hasDiscrepancy ? "#fff8f8" : "white" }}
+        style={{ background: c.discrepancyLevel === "major" ? "#fff8f8" : c.discrepancyLevel === "minor" ? "#fffef5" : "white" }}
         onClick={() => setOpen(v => !v)}>
 
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"
@@ -72,19 +84,20 @@ function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: bo
             </div>
             <div className="text-[10px] text-gray-400">Missing Swiggy</div>
           </div>
+          {countDiff > 0 && (
+            <div className="text-center">
+              <div className="font-bold text-gray-500">{diffPct}%</div>
+              <div className="text-[10px] text-gray-400">Count diff</div>
+            </div>
+          )}
         </div>
 
         {/* Status chip */}
         <div className="ml-2">
-          {c.hasDiscrepancy ? (
-            <span className="text-[11px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-2.5 py-1">
-              ⚠ Mismatch
-            </span>
-          ) : (
-            <span className="text-[11px] font-semibold bg-green-50 text-green-600 border border-green-200 rounded-full px-2.5 py-1">
-              ✓ Synced
-            </span>
-          )}
+          <span className="text-[11px] font-semibold rounded-full px-2.5 py-1"
+            style={{ background: chip.bg, color: chip.color, border: `1px solid ${chip.border}` }}>
+            {chip.label}
+          </span>
         </div>
       </button>
 
@@ -162,8 +175,9 @@ export default function MenuCheckDashboard({ comparisons }: Props) {
   const [filter, setFilter] = useState<"all" | "issues">("issues");
   const [search, setSearch] = useState("");
 
-  const discrepancyCount = comparisons.filter(c => c.hasDiscrepancy).length;
-  const syncedCount = comparisons.length - discrepancyCount;
+  const majorCount = comparisons.filter(c => c.discrepancyLevel === "major").length;
+  const minorCount = comparisons.filter(c => c.discrepancyLevel === "minor").length;
+  const syncedCount = comparisons.filter(c => c.discrepancyLevel === "synced").length;
   const totalFlags = comparisons.reduce((s, c) => s + c.missingFromZomato.length + c.missingFromSwiggy.length, 0);
 
   const filtered = comparisons
@@ -181,23 +195,33 @@ export default function MenuCheckDashboard({ comparisons }: Props) {
               Fixed menu items compared across Swiggy and Zomato · Recommended categories excluded
             </p>
           </div>
-          <div className="text-xs text-gray-400">Refreshes every 5 min</div>
+          <div className="text-xs text-gray-400">Refreshes every 30 min</div>
         </div>
 
         {/* KPIs */}
         <div className="flex items-center gap-4 mt-4">
-          <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-2.5">
-            <div className="text-xl font-bold text-red-700 leading-none">{discrepancyCount}</div>
-            <div className="text-[10px] text-red-600 mt-0.5">Brands with mismatch</div>
-          </div>
+          {majorCount > 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-2.5">
+              <div className="text-xl font-bold text-red-700 leading-none">{majorCount}</div>
+              <div className="text-[10px] text-red-600 mt-0.5">Major mismatch</div>
+            </div>
+          )}
+          {minorCount > 0 && (
+            <div className="bg-amber-50 border border-amber-100 rounded-lg px-4 py-2.5">
+              <div className="text-xl font-bold text-amber-700 leading-none">{minorCount}</div>
+              <div className="text-[10px] text-amber-600 mt-0.5">Minor drift</div>
+            </div>
+          )}
           <div className="bg-green-50 border border-green-100 rounded-lg px-4 py-2.5">
             <div className="text-xl font-bold text-green-700 leading-none">{syncedCount}</div>
-            <div className="text-[10px] text-green-600 mt-0.5">Fully synced</div>
+            <div className="text-[10px] text-green-600 mt-0.5">Synced</div>
           </div>
-          <div className="bg-amber-50 border border-amber-100 rounded-lg px-4 py-2.5">
-            <div className="text-xl font-bold text-amber-700 leading-none">{totalFlags}</div>
-            <div className="text-[10px] text-amber-600 mt-0.5">Total item flags</div>
-          </div>
+          {totalFlags > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
+              <div className="text-xl font-bold text-gray-600 leading-none">{totalFlags}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">Total item gaps</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -212,7 +236,7 @@ export default function MenuCheckDashboard({ comparisons }: Props) {
                 color: filter === f ? "#111827" : "#6b7280",
                 boxShadow: filter === f ? "0 1px 2px rgba(0,0,0,0.1)" : "none",
               }}>
-              {f === "issues" ? `Issues only (${discrepancyCount})` : `All brands (${comparisons.length})`}
+              {f === "issues" ? `Issues only (${majorCount + minorCount})` : `All brands (${comparisons.length})`}
             </button>
           ))}
         </div>
@@ -233,7 +257,7 @@ export default function MenuCheckDashboard({ comparisons }: Props) {
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
               <rect x="9" y="3" width="6" height="4" rx="1" />
             </svg>
-            <p className="text-sm">{filter === "issues" ? "No menu mismatches found" : "No brands found"}</p>
+            <p className="text-sm">{filter === "issues" ? "No menu issues found" : "No brands found"}</p>
             {filter === "issues" && <p className="text-xs mt-1 text-gray-300">All fixed menus are in sync across platforms</p>}
           </div>
         ) : (

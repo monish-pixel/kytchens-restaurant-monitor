@@ -61,10 +61,13 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
   const hasIssue = swiggyIssue || zomatoIssue;
 
   function snap(platform: "swiggy" | "zomato") {
-    const snap = platform === "swiggy" ? swiggy : zomato;
+    const snapData = platform === "swiggy" ? swiggy : zomato;
     const open = platform === "swiggy" ? swiggyOpen : zomatoOpen;
     const active = platform === "swiggy" ? r.should_be_live_swiggy : r.should_be_live_zomato;
     if (!active) return <span className="text-[11px] text-gray-300">—</span>;
+    const age = snapData?.fetched_at
+      ? formatDistanceToNow(new Date(snapData.fetched_at), { addSuffix: true })
+      : null;
     return (
       <div className="flex items-center gap-1.5">
         <StatusDot open={open} />
@@ -72,11 +75,8 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
           <div className="text-[11px] font-semibold leading-none" style={{ color: open === null ? "#9ca3af" : open ? C.online : C.offline }}>
             {open === null ? "No data" : open ? "Online" : "Offline"}
           </div>
-          {snap && (
-            <div className="text-[10px] text-gray-400 mt-0.5">
-              {snap.item_count > 0 && `${snap.item_count} items`}
-              {snap.items_out_of_stock > 0 && <span className="text-amber-500"> · {snap.items_out_of_stock} OOS</span>}
-            </div>
+          {age && (
+            <div className="text-[10px] text-gray-400 mt-0.5">{age}</div>
           )}
         </div>
       </div>

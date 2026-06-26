@@ -339,6 +339,13 @@ function normalizeItemName(name: string): string {
   return n.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+// Match key adds pluralization tolerance on top of normalization.
+// "Extra Dark Chocolate Macaron" (Swiggy) ≡ "Extra Dark Chocolate Macarons" (Zomato)
+function matchKey(name: string): string {
+  const n = normalizeItemName(name);
+  return n.endsWith("s") ? n.slice(0, -1) : n;
+}
+
 export type MenuItemFlag = {
   name: string;
   category: string | null;
@@ -359,6 +366,8 @@ export type BrandMenuComparison = {
   missingFromSwiggy: MenuItemFlag[];
   inBoth: number;
   hasDiscrepancy: boolean;
+  // "synced" = 0 gaps | "minor" = 1-4 gaps (propagation delay / small drift) | "major" = 5+ gaps (structural difference)
+  discrepancyLevel: "synced" | "minor" | "major";
 };
 
 export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
@@ -377,12 +386,15 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
   const allIds = [...swiggyIds, ...zomatoIds];
   if (!allIds.length) return [];
 
-  // Get latest snapshot IDs per platform+restaurant
+  // Get latest snapshot IDs per platform+restaurant.
+  // Limit to 500: we only need 1 snapshot per brand-platform combo (~N brands × 2 platforms).
+  // Ordering by fetched_at DESC means the most-recent scrape per brand is always within the first 500.
   const { data: snapshots } = await supabase
     .from("snapshots")
     .select("id,platform,restaurant_id,fetched_at")
     .in("restaurant_id", allIds)
-    .order("fetched_at", { ascending: false });
+    .order("fetched_at", { ascending: false })
+    .limit(500);
 
   // Keep only the latest snapshot per (platform, restaurant_id)
   const latestSnap = new Map<string, number>(); // key → snapshot_id
@@ -394,11 +406,13 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
   const snapIds = [...latestSnap.values()];
   if (!snapIds.length) return [];
 
-  // Fetch all menu items for those snapshots
+  // Fetch all menu items for those snapshots.
+  // 10 000 row limit: supports ~50 brands × 100 items/platform × 2 platforms.
   const { data: items } = await supabase
     .from("menu_items")
     .select("snapshot_id,name,category,in_stock,is_enabled")
-    .in("snapshot_id", snapIds);
+    .in("snapshot_id", snapIds)
+    .limit(10000);
 
   // Build item sets per (platform, restaurant_id) — fixed menu only
   const itemsBySnap = new Map<number, Array<{ name: string; category: string | null }>>();
@@ -424,25 +438,29 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
     const swiggyItems = itemsBySnap.get(swiggySnapId) ?? [];
     const zomatoItems = itemsBySnap.get(zomatoSnapId) ?? [];
 
-    // Build normalized name maps
+    // Build match-key maps (normalized name + pluralization tolerance)
     const swiggyMap = new Map<string, { name: string; category: string | null }>();
-    for (const i of swiggyItems) swiggyMap.set(normalizeItemName(i.name), i);
+    for (const i of swiggyItems) swiggyMap.set(matchKey(i.name), i);
 
     const zomatoMap = new Map<string, { name: string; category: string | null }>();
-    for (const i of zomatoItems) zomatoMap.set(normalizeItemName(i.name), i);
+    for (const i of zomatoItems) zomatoMap.set(matchKey(i.name), i);
 
     const missingFromZomato: MenuItemFlag[] = [];
     const missingFromSwiggy: MenuItemFlag[] = [];
     let inBoth = 0;
 
-    for (const [norm, item] of swiggyMap) {
-      if (zomatoMap.has(norm)) inBoth++;
+    for (const [key, item] of swiggyMap) {
+      if (zomatoMap.has(key)) inBoth++;
       else missingFromZomato.push({ name: item.name, category: item.category, onSwiggy: true, onZomato: false });
     }
-    for (const [norm, item] of zomatoMap) {
-      if (!swiggyMap.has(norm))
+    for (const [key, item] of zomatoMap) {
+      if (!swiggyMap.has(key))
         missingFromSwiggy.push({ name: item.name, category: item.category, onSwiggy: false, onZomato: true });
     }
+
+    const totalGaps = missingFromZomato.length + missingFromSwiggy.length;
+    const discrepancyLevel: "synced" | "minor" | "major" =
+      totalGaps === 0 ? "synced" : totalGaps <= 4 ? "minor" : "major";
 
     results.push({
       restaurantId: r.id,
@@ -456,13 +474,13 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
       missingFromZomato,
       missingFromSwiggy,
       inBoth,
-      hasDiscrepancy: missingFromZomato.length > 0 || missingFromSwiggy.length > 0,
+      hasDiscrepancy: totalGaps > 0,
+      discrepancyLevel,
     });
   }
 
-  return results.sort((a, b) => {
-    const aIssue = a.hasDiscrepancy ? 0 : 1;
-    const bIssue = b.hasDiscrepancy ? 0 : 1;
-    return aIssue - bIssue || a.brand.localeCompare(b.brand);
-  });
+  const levelOrder = { major: 0, minor: 1, synced: 2 };
+  return results.sort((a, b) =>
+    levelOrder[a.discrepancyLevel] - levelOrder[b.discrepancyLevel] || a.brand.localeCompare(b.brand)
+  );
 }
