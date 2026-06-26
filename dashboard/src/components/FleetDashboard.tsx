@@ -69,7 +69,7 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
   const swiggyOpen = swiggy?.is_open ?? null;
   const zomatoOpen = zomato?.is_open ?? null;
   const swiggyIssue = r.should_be_live_swiggy && swiggyOpen === false;
-  const zomatoIssue = r.should_be_live_zomato && zomatoOpen === false;
+  const zomatoIssue = r.should_be_live_zomato && !!r.zomato_slug && zomatoOpen === false;
   const hasIssue = swiggyIssue || zomatoIssue;
 
   function platformCell(platform: "swiggy" | "zomato") {
@@ -117,7 +117,7 @@ function LocationCard({ loc }: { loc: LocationData }) {
   const [expanded, setExpanded] = useState(hasIssues);
   const href = `/l/${loc.citySlug}/${loc.locationSlug}`;
   const swiggyTotal = loc.brands.filter(b => b.restaurant.should_be_live_swiggy).length;
-  const zomatoTotal = loc.brands.filter(b => b.restaurant.should_be_live_zomato).length;
+  const zomatoTotal = loc.brands.filter(b => b.restaurant.should_be_live_zomato && !!b.restaurant.zomato_slug).length;
 
   return (
     <div
@@ -307,7 +307,7 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
             <p className="text-sm">No active restaurants found</p>
             <p className="text-xs mt-1 opacity-60">Add entries to the Google Sheet and run a sync</p>
           </div>
-        ) : (
+        ) : selectedCity !== "All" ? (
           <div className="space-y-2">
             {filtered
               .sort((a, b) => {
@@ -316,6 +316,32 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
                 return aIssue - bIssue;
               })
               .map(loc => <LocationCard key={`${loc.citySlug}/${loc.locationSlug}`} loc={loc} />)}
+          </div>
+        ) : (
+          // "All" view: group by city with section headers
+          <div className="space-y-6">
+            {cities.map(city => {
+              const cityLocs = filtered
+                .filter(l => l.city === city)
+                .sort((a, b) => {
+                  const aIssue = (a.swiggyOfflineCount > 0 || a.zomatoOfflineCount > 0) ? 0 : 1;
+                  const bIssue = (b.swiggyOfflineCount > 0 || b.zomatoOfflineCount > 0) ? 0 : 1;
+                  return aIssue - bIssue;
+                });
+              if (cityLocs.length === 0) return null;
+              return (
+                <div key={city}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>{city}</span>
+                    <span className="text-[11px]" style={{ color: "var(--border-2)" }}>{cityLocs.reduce((s, l) => s + l.brands.length, 0)} brands</span>
+                    <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+                  </div>
+                  <div className="space-y-2">
+                    {cityLocs.map(loc => <LocationCard key={`${loc.citySlug}/${loc.locationSlug}`} loc={loc} />)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </main>

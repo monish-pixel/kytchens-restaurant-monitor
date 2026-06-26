@@ -19,14 +19,15 @@ export default async function FleetPage() {
         const swiggyOpen = s.swiggy?.is_open ?? null;
         const zomatoOpen = s.zomato?.is_open ?? null;
 
+        const zomatoActive = s.restaurant.should_be_live_zomato && !!s.restaurant.zomato_slug;
         if (s.restaurant.should_be_live_swiggy && swiggyOpen === false) swiggyOfflineCount++;
-        if (s.restaurant.should_be_live_zomato && zomatoOpen === false) zomatoOfflineCount++;
+        if (zomatoActive && zomatoOpen === false) zomatoOfflineCount++;
 
         if (
           (s.restaurant.should_be_live_swiggy && swiggyOpen === false) ||
-          (s.restaurant.should_be_live_zomato && zomatoOpen === false) ||
+          (zomatoActive && zomatoOpen === false) ||
           (!s.restaurant.should_be_live_swiggy && swiggyOpen === true) ||
-          (!s.restaurant.should_be_live_zomato && zomatoOpen === true)
+          (!zomatoActive && zomatoOpen === true)
         ) {
           hasMismatch = true;
         }

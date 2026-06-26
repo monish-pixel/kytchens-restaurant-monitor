@@ -152,7 +152,7 @@ export default function LocationDashboard({
   }
 
   const swiggyBrands = restaurants.filter((s) => s.restaurant.should_be_live_swiggy).length;
-  const zomatoBrands = restaurants.filter((s) => s.restaurant.should_be_live_zomato).length;
+  const zomatoBrands = restaurants.filter((s) => s.restaurant.should_be_live_zomato && !!s.restaurant.zomato_slug).length;
   const swiggyOffline = restaurants.filter(
     (s) => s.restaurant.should_be_live_swiggy && s.swiggy && !s.swiggy.is_open
   ).length;
@@ -319,7 +319,7 @@ export default function LocationDashboard({
 
                 {/* Zomato */}
                 <div className="w-44">
-                  {r.should_be_live_zomato ? (
+                  {r.should_be_live_zomato && !!r.zomato_slug ? (
                     <div>
                       <span
                         className="text-xs font-bold"
@@ -420,7 +420,7 @@ export default function LocationDashboard({
                         <LiveItemsList snap={swiggy} />
                       </div>
                     )}
-                    {r.should_be_live_zomato && hasZomatoItems && (
+                    {r.should_be_live_zomato && !!r.zomato_slug && hasZomatoItems && (
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: C.zomato }}>Zomato</div>
                         <LiveItemsList snap={zomato} />
