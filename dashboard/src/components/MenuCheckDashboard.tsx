@@ -8,29 +8,43 @@ const C = { swiggy: "#FC8019", zomato: "#E23744" };
 type Props = { comparisons: BrandMenuComparison[] };
 
 function ItemPill({ item, missingFrom }: { item: MenuItemFlag; missingFrom: "swiggy" | "zomato" }) {
-  const label = missingFrom === "zomato" ? "Missing from Zomato" : "Missing from Swiggy";
   const color = missingFrom === "zomato" ? C.zomato : C.swiggy;
+  const label = missingFrom === "zomato" ? "Missing from Zomato" : "Missing from Swiggy";
   return (
-    <div className="flex items-start gap-2 py-1.5 border-b border-gray-50 last:border-0">
-      <span className="text-[10px] font-bold mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5"
-        style={{ background: `${color}15`, color }}>
+    <div className="flex items-start gap-2 py-1.5 border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+      <span
+        className="text-[10px] font-bold mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5"
+        style={{ background: `${color}18`, color }}
+      >
         {missingFrom === "zomato" ? "ZO" : "SW"}
       </span>
       <div className="flex-1 min-w-0">
-        <span className="text-sm text-gray-800">{item.name}</span>
+        <span className="text-sm" style={{ color: "var(--ink)" }}>{item.name}</span>
         {item.category && (
-          <span className="text-[10px] text-gray-400 ml-2">{item.category}</span>
+          <span className="text-[10px] ml-2" style={{ color: "var(--ink-4)" }}>{item.category}</span>
         )}
       </div>
-      <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5">{label}</span>
+      <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: "var(--ink-4)" }}>{label}</span>
     </div>
   );
 }
 
 const LEVEL_CHIP = {
-  synced: { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0", label: "✓ Synced" },
-  minor:  { bg: "#fffbeb", color: "#d97706", border: "#fde68a", label: "~ Minor drift" },
-  major:  { bg: "#fff1f2", color: "#dc2626", border: "#fecaca", label: "⚠ Mismatch" },
+  synced: { bg: "#F0FDF4", color: "#16a34a", border: "#BBF7D0", label: "✓ Synced" },
+  minor:  { bg: "#FFFBEB", color: "#D97706", border: "#FDE68A", label: "~ Minor drift" },
+  major:  { bg: "#FEF2F2", color: "#DC2626", border: "#FECACA", label: "⚠ Mismatch" },
+};
+
+const LEVEL_CARD_BORDER = {
+  synced: "var(--border)",
+  minor:  "#FDE68A",
+  major:  "#FECACA",
+};
+
+const LEVEL_CARD_BG = {
+  synced: "var(--surface)",
+  minor:  "#FFFEF8",
+  major:  "#FFF9F9",
 };
 
 function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: boolean }) {
@@ -48,84 +62,95 @@ function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: bo
     : 0;
 
   return (
-    <div className="bg-white rounded-xl border overflow-hidden"
-      style={{ borderColor: c.discrepancyLevel === "major" ? "#fca5a5" : c.discrepancyLevel === "minor" ? "#fde68a" : "#e5e7eb" }}>
-
-      <button className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50/50"
-        style={{ background: c.discrepancyLevel === "major" ? "#fff8f8" : c.discrepancyLevel === "minor" ? "#fffef5" : "white" }}
-        onClick={() => setOpen(v => !v)}>
-
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        border: `1px solid ${LEVEL_CARD_BORDER[c.discrepancyLevel]}`,
+        background: LEVEL_CARD_BG[c.discrepancyLevel],
+        boxShadow: "0 1px 3px rgba(28,25,23,0.04)",
+      }}
+    >
+      <button
+        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
+        style={{ background: LEVEL_CARD_BG[c.discrepancyLevel] }}
+        onClick={() => setOpen(v => !v)}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.5"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s", flexShrink: 0 }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
 
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-gray-900">{c.brand}</div>
-          <div className="text-xs text-gray-400 mt-0.5">{c.location} · {c.city}</div>
+          <div className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{c.brand}</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>{c.location} · {c.city}</div>
         </div>
 
         {/* Counts */}
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-3 text-xs" style={{ fontVariantNumeric: "tabular-nums" }}>
           <div className="text-center">
-            <div className="font-bold text-gray-700">{c.inBoth}</div>
-            <div className="text-[10px] text-gray-400">In both</div>
+            <div className="font-bold" style={{ color: "var(--ink)" }}>{c.inBoth}</div>
+            <div className="text-[10px]" style={{ color: "var(--ink-4)" }}>In both</div>
           </div>
-          <div className="w-px h-8 bg-gray-100" />
+          <div className="w-px h-8" style={{ background: "var(--border)" }} />
           <div className="text-center">
             <div className="font-bold" style={{ color: missingZomatoCount > 0 ? C.zomato : "#16a34a" }}>
               {missingZomatoCount}
             </div>
-            <div className="text-[10px] text-gray-400">Missing Zomato</div>
+            <div className="text-[10px]" style={{ color: "var(--ink-4)" }}>Miss. Zomato</div>
           </div>
           <div className="text-center">
             <div className="font-bold" style={{ color: missingSwiggyCount > 0 ? C.swiggy : "#16a34a" }}>
               {missingSwiggyCount}
             </div>
-            <div className="text-[10px] text-gray-400">Missing Swiggy</div>
+            <div className="text-[10px]" style={{ color: "var(--ink-4)" }}>Miss. Swiggy</div>
           </div>
           {countDiff > 0 && (
             <div className="text-center">
-              <div className="font-bold text-gray-500">{diffPct}%</div>
-              <div className="text-[10px] text-gray-400">Count diff</div>
+              <div className="font-bold" style={{ color: "var(--ink-3)" }}>{diffPct}%</div>
+              <div className="text-[10px]" style={{ color: "var(--ink-4)" }}>Count diff</div>
             </div>
           )}
         </div>
 
         {/* Status chip */}
-        <div className="ml-2">
-          <span className="text-[11px] font-semibold rounded-full px-2.5 py-1"
-            style={{ background: chip.bg, color: chip.color, border: `1px solid ${chip.border}` }}>
+        <div className="ml-2 flex-shrink-0">
+          <span
+            className="text-[11px] font-semibold rounded-full px-2.5 py-1"
+            style={{ background: chip.bg, color: chip.color, border: `1px solid ${chip.border}` }}
+          >
             {chip.label}
           </span>
         </div>
       </button>
 
       {open && c.hasDiscrepancy && (
-        <div className="border-t border-gray-100">
+        <div style={{ borderTop: "1px solid var(--border)" }}>
           {/* Platform totals bar */}
-          <div className="flex items-center gap-6 px-5 py-2.5 bg-gray-50 border-b border-gray-100">
+          <div
+            className="flex items-center gap-6 px-5 py-2.5 border-b"
+            style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}
+          >
             <span className="text-[11px] font-bold" style={{ color: C.swiggy }}>
               Swiggy: {c.swiggyTotal} items
             </span>
             <span className="text-[11px] font-bold" style={{ color: C.zomato }}>
               Zomato: {c.zomatoTotal} items
             </span>
-            <span className="text-[11px] text-gray-400">
-              {c.inBoth} items match · {missingZomatoCount + missingSwiggyCount} discrepancies
+            <span className="text-[11px]" style={{ color: "var(--ink-4)" }}>
+              {c.inBoth} match · {missingZomatoCount + missingSwiggyCount} discrepancies
             </span>
-            <div className="ml-auto text-[10px] text-gray-400 italic">
-              Recommended/Bestseller categories excluded
+            <div className="ml-auto text-[10px] italic" style={{ color: "var(--ink-4)" }}>
+              Recommended/Bestseller excluded
             </div>
           </div>
 
           {/* Tab switcher */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex" style={{ borderBottom: "1px solid var(--border)" }}>
             <button
               className="px-5 py-2.5 text-xs font-semibold border-b-2 transition-colors"
               style={{
                 borderColor: tab === "zomato" ? C.zomato : "transparent",
-                color: tab === "zomato" ? C.zomato : "#6b7280",
+                color: tab === "zomato" ? C.zomato : "var(--ink-3)",
               }}
               onClick={() => setTab("zomato")}
             >
@@ -135,7 +160,7 @@ function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: bo
               className="px-5 py-2.5 text-xs font-semibold border-b-2 transition-colors"
               style={{
                 borderColor: tab === "swiggy" ? C.swiggy : "transparent",
-                color: tab === "swiggy" ? C.swiggy : "#6b7280",
+                color: tab === "swiggy" ? C.swiggy : "var(--ink-3)",
               }}
               onClick={() => setTab("swiggy")}
             >
@@ -146,7 +171,7 @@ function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: bo
           {/* Items list */}
           <div className="px-5 py-2 max-h-64 overflow-y-auto">
             {currentItems.length === 0 ? (
-              <div className="py-6 text-center text-sm text-gray-400">
+              <div className="py-6 text-center text-sm" style={{ color: "var(--ink-4)" }}>
                 No items missing from {tab === "zomato" ? "Zomato" : "Swiggy"}
               </div>
             ) : (
@@ -159,11 +184,11 @@ function BrandCard({ c, defaultOpen }: { c: BrandMenuComparison; defaultOpen: bo
       )}
 
       {open && !c.hasDiscrepancy && (
-        <div className="border-t border-gray-100 px-5 py-4 bg-green-50/30">
-          <div className="flex items-center gap-6 text-xs text-gray-500">
+        <div className="border-t px-5 py-4" style={{ borderColor: "var(--border)", background: "#F0FDF480" }}>
+          <div className="flex items-center gap-6 text-xs" style={{ color: "var(--ink-3)" }}>
             <span style={{ color: C.swiggy }} className="font-medium">Swiggy: {c.swiggyTotal} items</span>
             <span style={{ color: C.zomato }} className="font-medium">Zomato: {c.zomatoTotal} items</span>
-            <span className="text-green-600 font-medium">✓ All {c.inBoth} fixed-menu items match</span>
+            <span className="font-medium" style={{ color: "#16a34a" }}>✓ All {c.inBoth} fixed-menu items match</span>
           </div>
         </div>
       )}
@@ -185,80 +210,91 @@ export default function MenuCheckDashboard({ comparisons }: Props) {
     .filter(c => !search || c.brand.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen" style={{ background: "var(--canvas)" }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-5">
+      <div
+        className="px-8 py-5"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Menu Check</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h1 className="text-base font-bold" style={{ color: "var(--ink)" }}>Menu Check</h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>
               Fixed menu items compared across Swiggy and Zomato · Recommended categories excluded
             </p>
           </div>
-          <div className="text-xs text-gray-400">Refreshes every 30 min</div>
+          <div className="text-xs" style={{ color: "var(--ink-4)" }}>Refreshes every 30 min</div>
         </div>
 
         {/* KPIs */}
-        <div className="flex items-center gap-4 mt-4">
+        <div className="flex items-center gap-3 mt-4">
           {majorCount > 0 && (
-            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-2.5">
-              <div className="text-xl font-bold text-red-700 leading-none">{majorCount}</div>
-              <div className="text-[10px] text-red-600 mt-0.5">Major mismatch</div>
+            <div className="rounded-lg px-4 py-2.5" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
+              <div className="text-xl font-bold leading-none" style={{ color: "#DC2626", fontVariantNumeric: "tabular-nums" }}>{majorCount}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#DC262699" }}>Major mismatch</div>
             </div>
           )}
           {minorCount > 0 && (
-            <div className="bg-amber-50 border border-amber-100 rounded-lg px-4 py-2.5">
-              <div className="text-xl font-bold text-amber-700 leading-none">{minorCount}</div>
-              <div className="text-[10px] text-amber-600 mt-0.5">Minor drift</div>
+            <div className="rounded-lg px-4 py-2.5" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+              <div className="text-xl font-bold leading-none" style={{ color: "#D97706", fontVariantNumeric: "tabular-nums" }}>{minorCount}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#D9770699" }}>Minor drift</div>
             </div>
           )}
-          <div className="bg-green-50 border border-green-100 rounded-lg px-4 py-2.5">
-            <div className="text-xl font-bold text-green-700 leading-none">{syncedCount}</div>
-            <div className="text-[10px] text-green-600 mt-0.5">Synced</div>
+          <div className="rounded-lg px-4 py-2.5" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+            <div className="text-xl font-bold leading-none" style={{ color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>{syncedCount}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: "#16a34a99" }}>Synced</div>
           </div>
           {totalFlags > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
-              <div className="text-xl font-bold text-gray-600 leading-none">{totalFlags}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">Total item gaps</div>
+            <div className="rounded-lg px-4 py-2.5" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <div className="text-xl font-bold leading-none" style={{ color: "var(--ink-2)", fontVariantNumeric: "tabular-nums" }}>{totalFlags}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>Total item gaps</div>
             </div>
           )}
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-4">
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+      <div
+        className="px-8 py-3 flex items-center gap-4"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
+        <div className="flex gap-1 rounded-lg p-1" style={{ background: "var(--surface-2)" }}>
           {(["issues", "all"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
               style={{
-                background: filter === f ? "white" : "transparent",
-                color: filter === f ? "#111827" : "#6b7280",
-                boxShadow: filter === f ? "0 1px 2px rgba(0,0,0,0.1)" : "none",
+                background: filter === f ? "var(--surface)" : "transparent",
+                color: filter === f ? "var(--ink)" : "var(--ink-3)",
+                boxShadow: filter === f ? "0 1px 2px rgba(28,25,23,0.08)" : "none",
               }}>
               {f === "issues" ? `Issues only (${majorCount + minorCount})` : `All brands (${comparisons.length})`}
             </button>
           ))}
         </div>
         <input
-          placeholder="Search brand..."
+          placeholder="Search brand…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-blue-400 w-48"
+          className="rounded-lg px-3 py-1.5 text-sm outline-none w-48 transition-colors"
+          style={{
+            border: "1px solid var(--border)",
+            background: "var(--surface)",
+            color: "var(--ink)",
+          }}
         />
-        <span className="text-xs text-gray-400 ml-auto">{filtered.length} brands shown</span>
+        <span className="text-xs ml-auto" style={{ color: "var(--ink-4)" }}>{filtered.length} brands shown</span>
       </div>
 
       {/* Brand cards */}
       <main className="flex-1 px-8 py-6 space-y-2">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-gray-300">
+          <div className="flex flex-col items-center justify-center h-64" style={{ color: "var(--ink-4)" }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-30">
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
               <rect x="9" y="3" width="6" height="4" rx="1" />
             </svg>
             <p className="text-sm">{filter === "issues" ? "No menu issues found" : "No brands found"}</p>
-            {filter === "issues" && <p className="text-xs mt-1 text-gray-300">All fixed menus are in sync across platforms</p>}
+            {filter === "issues" && <p className="text-xs mt-1 opacity-60">All fixed menus are in sync across platforms</p>}
           </div>
         ) : (
           filtered.map(c => (

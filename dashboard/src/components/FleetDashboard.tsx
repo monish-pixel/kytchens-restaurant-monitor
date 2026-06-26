@@ -30,23 +30,35 @@ const C = {
   zomato: "#E23744",
   online: "#16a34a",
   offline: "#dc2626",
-  amber: "#d97706",
+  amber: "#D97706",
 };
 
-function StatusDot({ open }: { open: boolean | null }) {
-  const color = open === null ? "#d1d5db" : open ? C.online : C.offline;
-  return <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: color }} />;
+function StatusChip({ open, active }: { open: boolean | null; active: boolean }) {
+  if (!active) return <span className="text-xs" style={{ color: "var(--ink-4)" }}>—</span>;
+  const bg = open === null ? "var(--surface-2)" : open ? "#F0FDF4" : "#FEF2F2";
+  const color = open === null ? "var(--ink-4)" : open ? C.online : C.offline;
+  const dot = open === null ? "var(--border-2)" : open ? C.online : C.offline;
+  const label = open === null ? "No data" : open ? "Online" : "Offline";
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
+      style={{ background: bg, color, border: `1px solid ${open === null ? "var(--border)" : open ? "#BBF7D0" : "#FECACA"}` }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
+      <span className="text-[11px] font-semibold">{label}</span>
+    </span>
+  );
 }
 
 function PlatformBadge({ color, label, offline, total }: { color: string; label: string; offline: number; total: number }) {
   const ok = offline === 0;
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] font-bold" style={{ color }}>{label}</span>
+      <span className="text-[10px] font-bold tracking-wide" style={{ color }}>{label}</span>
       {ok ? (
-        <span className="text-[10px] font-medium text-green-600">✓ {total}/{total}</span>
+        <span className="text-[10px] font-medium" style={{ color: C.online }}>✓ {total}/{total}</span>
       ) : (
-        <span className="text-[10px] font-semibold text-red-600">{offline} offline</span>
+        <span className="text-[10px] font-semibold" style={{ color: C.offline }}>{offline} offline</span>
       )}
     </div>
   );
@@ -60,25 +72,19 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
   const zomatoIssue = r.should_be_live_zomato && zomatoOpen === false;
   const hasIssue = swiggyIssue || zomatoIssue;
 
-  function snap(platform: "swiggy" | "zomato") {
+  function platformCell(platform: "swiggy" | "zomato") {
     const snapData = platform === "swiggy" ? swiggy : zomato;
     const open = platform === "swiggy" ? swiggyOpen : zomatoOpen;
     const active = platform === "swiggy" ? r.should_be_live_swiggy : r.should_be_live_zomato;
-    if (!active) return <span className="text-[11px] text-gray-300">—</span>;
     const age = snapData?.fetched_at
       ? formatDistanceToNow(new Date(snapData.fetched_at), { addSuffix: true })
       : null;
     return (
-      <div className="flex items-center gap-1.5">
-        <StatusDot open={open} />
-        <div>
-          <div className="text-[11px] font-semibold leading-none" style={{ color: open === null ? "#9ca3af" : open ? C.online : C.offline }}>
-            {open === null ? "No data" : open ? "Online" : "Offline"}
-          </div>
-          {age && (
-            <div className="text-[10px] text-gray-400 mt-0.5">{age}</div>
-          )}
-        </div>
+      <div>
+        <StatusChip open={open} active={active} />
+        {active && age && (
+          <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>{age}</div>
+        )}
       </div>
     );
   }
@@ -86,16 +92,21 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
   return (
     <Link
       href={locationHref}
-      className="flex items-center gap-4 pl-10 pr-5 py-2.5 border-t border-gray-100 hover:bg-blue-50/30 transition-colors group"
-      style={{ background: hasIssue ? "#fffbf0" : "white" }}
+      className="flex items-center gap-4 pl-10 pr-5 py-2.5 border-t transition-colors group"
+      style={{
+        borderColor: "var(--border)",
+        background: hasIssue ? "#FFFBF0" : "var(--surface)",
+      }}
     >
       <div className="flex-1 min-w-0">
-        <span className="text-sm text-gray-700 group-hover:text-gray-900">{r.brand}</span>
+        <span className="text-sm font-medium" style={{ color: "var(--ink-2)" }}>{r.brand}</span>
       </div>
-      <div className="w-32">{snap("swiggy")}</div>
-      <div className="w-32">{snap("zomato")}</div>
+      <div className="w-36">{platformCell("swiggy")}</div>
+      <div className="w-36">{platformCell("zomato")}</div>
       <div className="w-24 text-[11px]">
-        {hasIssue && <span className="font-semibold text-amber-600">⚠ Mismatch</span>}
+        {hasIssue && (
+          <span className="font-semibold" style={{ color: C.amber }}>⚠ Issue</span>
+        )}
       </div>
     </Link>
   );
@@ -109,25 +120,30 @@ function LocationCard({ loc }: { loc: LocationData }) {
   const zomatoTotal = loc.brands.filter(b => b.restaurant.should_be_live_zomato).length;
 
   return (
-    <div className="bg-white rounded-xl border overflow-hidden transition-shadow hover:shadow-sm"
-      style={{ borderColor: hasIssues ? "#fca5a5" : "#e5e7eb" }}>
-
+    <div
+      className="rounded-xl overflow-hidden transition-shadow hover:shadow-sm"
+      style={{
+        background: "var(--surface)",
+        border: hasIssues ? "1px solid #FECACA" : "1px solid var(--border)",
+        boxShadow: "0 1px 3px rgba(28,25,23,0.04)",
+      }}
+    >
       <button
         className="w-full flex items-center gap-4 px-5 py-3.5 text-left"
-        style={{ background: hasIssues ? "#fff5f5" : "white" }}
+        style={{ background: hasIssues ? "#FFF8F8" : "var(--surface)" }}
         onClick={() => setExpanded(v => !v)}
       >
         {/* Chevron */}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"
-          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.5"
+          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s", flexShrink: 0 }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
 
         {/* Location name */}
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">{loc.location}</span>
-          <span className="text-xs text-gray-400">{loc.city}</span>
-          <span className="text-[11px] text-gray-300">· {loc.brands.length} brands</span>
+          <span className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{loc.location}</span>
+          <span className="text-xs" style={{ color: "var(--ink-4)" }}>{loc.city}</span>
+          <span className="text-[11px]" style={{ color: "var(--border-2)" }}>· {loc.brands.length} brands</span>
         </div>
 
         {/* Status chips */}
@@ -140,7 +156,8 @@ function LocationCard({ loc }: { loc: LocationData }) {
         <Link
           href={href}
           onClick={e => e.stopPropagation()}
-          className="text-[11px] text-blue-500 hover:text-blue-700 font-medium ml-2 whitespace-nowrap"
+          className="text-[11px] font-semibold ml-2 whitespace-nowrap transition-colors"
+          style={{ color: "var(--brand)" }}
         >
           View →
         </Link>
@@ -148,11 +165,14 @@ function LocationCard({ loc }: { loc: LocationData }) {
 
       {expanded && (
         <div>
-          <div className="flex items-center gap-4 pl-10 pr-5 py-2 bg-gray-50 border-t border-gray-100">
-            <div className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Brand</div>
-            <div className="w-32 text-[10px] font-semibold uppercase tracking-widest" style={{ color: C.swiggy }}>Swiggy</div>
-            <div className="w-32 text-[10px] font-semibold uppercase tracking-widest" style={{ color: C.zomato }}>Zomato</div>
-            <div className="w-24 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Flag</div>
+          <div
+            className="flex items-center gap-4 pl-10 pr-5 py-2 border-t"
+            style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}
+          >
+            <div className="flex-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>Brand</div>
+            <div className="w-36 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.swiggy }}>Swiggy</div>
+            <div className="w-36 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.zomato }}>Zomato</div>
+            <div className="w-24 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>Flag</div>
           </div>
           {loc.brands.map(s => <BrandRow key={s.restaurant.id} s={s} locationHref={href} />)}
         </div>
@@ -166,7 +186,6 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
   const [selectedCity, setSelectedCity] = useState("All");
 
   useEffect(() => {
-    // Refresh every 30 min — matches scraper cadence. More frequent is pointless.
     const id = setInterval(() => router.refresh(), 30 * 60 * 1000);
     return () => clearInterval(id);
   }, [router]);
@@ -181,53 +200,75 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
   const locationsWithIssues = filtered.filter(l => l.swiggyOfflineCount > 0 || l.zomatoOfflineCount > 0).length;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen" style={{ background: "var(--canvas)" }}>
       {/* Page header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-5">
+      <div
+        className="px-8 py-5"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Store Live</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Real-time listing status across all platforms</p>
+            <h1 className="text-base font-bold" style={{ color: "var(--ink)" }}>Store Live</h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>Real-time listing status across all platforms</p>
           </div>
-          <div className="text-xs text-gray-400">Scraper runs every 30 min</div>
+          <div className="text-xs" style={{ color: "var(--ink-4)" }}>Scraper runs every 30 min</div>
         </div>
 
-        {/* Summary KPI strip */}
-        <div className="flex items-center gap-6 mt-4">
-          <div className="flex items-center gap-2.5 bg-green-50 border border-green-100 rounded-lg px-4 py-2.5">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
+        {/* KPI strip */}
+        <div className="flex items-center gap-3 mt-4">
+          <div
+            className="flex items-center gap-2.5 rounded-lg px-4 py-2.5"
+            style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}
+          >
+            <span className="w-2 h-2 rounded-full" style={{ background: C.online }} />
             <div>
-              <div className="text-xl font-bold text-green-700 leading-none">{totalOnline}</div>
-              <div className="text-[10px] text-green-600 mt-0.5">Online</div>
+              <div className="text-xl font-bold leading-none" style={{ color: C.online, fontVariantNumeric: "tabular-nums" }}>{totalOnline}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#16a34a99" }}>Online</div>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 bg-red-50 border border-red-100 rounded-lg px-4 py-2.5">
-            <span className="w-2 h-2 rounded-full bg-red-500" />
+
+          <div
+            className="flex items-center gap-2.5 rounded-lg px-4 py-2.5"
+            style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}
+          >
+            <span className="w-2 h-2 rounded-full" style={{ background: C.offline }} />
             <div>
-              <div className="text-xl font-bold text-red-700 leading-none">{totalOffline}</div>
-              <div className="text-[10px] text-red-600 mt-0.5">Offline</div>
+              <div className="text-xl font-bold leading-none" style={{ color: C.offline, fontVariantNumeric: "tabular-nums" }}>{totalOffline}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#dc262699" }}>Offline</div>
             </div>
           </div>
+
           {totalStale > 0 && (
-            <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
-              <span className="w-2 h-2 rounded-full bg-gray-300" />
+            <div
+              className="flex items-center gap-2.5 rounded-lg px-4 py-2.5"
+              style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ background: "var(--border-2)" }} />
               <div>
-                <div className="text-xl font-bold text-gray-500 leading-none">{totalStale}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">No data</div>
+                <div className="text-xl font-bold leading-none" style={{ color: "var(--ink-4)", fontVariantNumeric: "tabular-nums" }}>{totalStale}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>No data</div>
               </div>
             </div>
           )}
-          <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5">
+
+          <div
+            className="flex items-center gap-2.5 rounded-lg px-4 py-2.5"
+            style={{ background: "var(--brand-bg)", border: "1px solid #FED7AA" }}
+          >
             <div>
-              <div className="text-xl font-bold text-blue-700 leading-none">{uptime}%</div>
-              <div className="text-[10px] text-blue-600 mt-0.5">Avg uptime</div>
+              <div className="text-xl font-bold leading-none" style={{ color: "var(--brand)", fontVariantNumeric: "tabular-nums" }}>{uptime}%</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "var(--brand)" }}>Avg uptime</div>
             </div>
           </div>
+
           {locationsWithIssues > 0 && (
-            <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-100 rounded-lg px-4 py-2.5">
+            <div
+              className="flex items-center gap-2.5 rounded-lg px-4 py-2.5"
+              style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}
+            >
               <div>
-                <div className="text-xl font-bold text-amber-700 leading-none">{locationsWithIssues}</div>
-                <div className="text-[10px] text-amber-600 mt-0.5">Locations with issues</div>
+                <div className="text-xl font-bold leading-none" style={{ color: C.amber, fontVariantNumeric: "tabular-nums" }}>{locationsWithIssues}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: C.amber }}>Locations with issues</div>
               </div>
             </div>
           )}
@@ -235,7 +276,10 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
       </div>
 
       {/* City filter tabs */}
-      <div className="bg-white border-b border-gray-200 px-8">
+      <div
+        className="px-8"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
         <div className="flex overflow-x-auto gap-1">
           {["All", ...cities].map(city => (
             <button
@@ -243,8 +287,8 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
               onClick={() => setSelectedCity(city)}
               className="px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap"
               style={{
-                borderColor: selectedCity === city ? "#2563eb" : "transparent",
-                color: selectedCity === city ? "#1d4ed8" : "#6b7280",
+                borderColor: selectedCity === city ? "var(--brand)" : "transparent",
+                color: selectedCity === city ? "var(--brand)" : "var(--ink-3)",
               }}
             >
               {city}
@@ -256,12 +300,12 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
       {/* Locations list */}
       <main className="flex-1 px-8 py-6">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-gray-300">
+          <div className="flex flex-col items-center justify-center h-64" style={{ color: "var(--ink-4)" }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-30">
               <path d="M17.94 11A8 8 0 1 0 11 17.94" /><path d="M21 21l-4.35-4.35" />
             </svg>
             <p className="text-sm">No active restaurants found</p>
-            <p className="text-xs mt-1 text-gray-300">Add entries to the Google Sheet and run a sync</p>
+            <p className="text-xs mt-1 opacity-60">Add entries to the Google Sheet and run a sync</p>
           </div>
         ) : (
           <div className="space-y-2">

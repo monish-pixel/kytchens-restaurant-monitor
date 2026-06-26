@@ -53,7 +53,7 @@ function LiveItemsList({ snap }: { snap: Snapshot | null }) {
     <div className="mt-2 space-y-2">
       {Object.entries(byCategory).map(([cat, items]) => (
         <div key={cat}>
-          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{cat}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--ink-4)" }}>{cat}</div>
           <div className="flex flex-wrap gap-1">
             {items.map((item, i) => (
               <span
@@ -114,11 +114,11 @@ function PlatformSummaryCard({
           <span className="text-xs font-bold text-green-700">✓ All online</span>
         )}
       </div>
-      <div className="text-2xl font-bold text-gray-900">
+      <div className="text-2xl font-bold" style={{ color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
         {onlineBrands}
-        <span className="text-gray-400 text-sm font-normal"> / {totalBrands}</span>
+        <span className="text-sm font-normal" style={{ color: "var(--ink-4)" }}> / {totalBrands}</span>
       </div>
-      <div className="text-xs text-gray-400 mt-0.5">brands online</div>
+      <div className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>brands online</div>
     </div>
   );
 }
@@ -170,33 +170,34 @@ export default function LocationDashboard({
     : null;
 
   return (
-    <div
-      className="min-h-screen bg-gray-50"
-      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-    >
+    <div className="min-h-screen" style={{ background: "var(--canvas)" }}>
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header
+        className="px-6 py-4"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
         <div className="max-w-4xl mx-auto">
           <Link
             href="/"
-            className="text-xs text-blue-600 hover:text-blue-800 mb-3 inline-block transition-colors"
+            className="text-xs font-medium mb-3 inline-block transition-colors hover:opacity-70"
+            style={{ color: "var(--brand)" }}
           >
             ← All locations
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{firstR?.location}</h1>
-              <p className="text-sm text-gray-500">{firstR?.city}</p>
+              <h1 className="text-xl font-bold" style={{ color: "var(--ink)" }}>{firstR?.location}</h1>
+              <p className="text-sm mt-0.5" style={{ color: "var(--ink-4)" }}>{firstR?.city}</p>
             </div>
             <div className="text-right">
               {latestFetchedAt ? (
-                <div className="text-xs font-medium text-gray-600">
+                <div className="text-xs font-medium" style={{ color: "var(--ink-3)" }}>
                   Data from {formatDistanceToNow(new Date(latestFetchedAt), { addSuffix: true })}
                 </div>
               ) : (
-                <div className="text-xs text-gray-400">No recent data</div>
+                <div className="text-xs" style={{ color: "var(--ink-4)" }}>No recent data</div>
               )}
-              <div className="text-[10px] text-gray-400 mt-0.5">Scraper runs every 30 min</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>Scraper runs every 30 min</div>
             </div>
           </div>
         </div>
@@ -205,7 +206,7 @@ export default function LocationDashboard({
       <main className="max-w-4xl mx-auto px-6 py-6 space-y-5">
         {/* Active alarm banner */}
         {activeAlerts.length > 0 && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-xl p-4" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-red-700">🔔 ALARM</span>
@@ -247,17 +248,13 @@ export default function LocationDashboard({
         </div>
 
         {/* Brand table */}
-        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "0 1px 3px rgba(28,25,23,0.04)" }}>
           {/* Table header */}
-          <div className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-            <div className="flex-1 text-[10px] text-gray-400 uppercase tracking-widest">Brand</div>
-            <div className="w-44 text-[10px] uppercase tracking-widest" style={{ color: C.swiggy }}>
-              Swiggy
-            </div>
-            <div className="w-44 text-[10px] uppercase tracking-widest" style={{ color: C.zomato }}>
-              Zomato
-            </div>
-            <div className="w-24 text-[10px] text-gray-400 uppercase tracking-widest">Flags</div>
+          <div className="flex items-center gap-4 px-4 py-2.5 border-b" style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+            <div className="flex-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>Brand</div>
+            <div className="w-44 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.swiggy }}>Swiggy</div>
+            <div className="w-44 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.zomato }}>Zomato</div>
+            <div className="w-24 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>Flags</div>
           </div>
 
           {restaurants.map(({ restaurant: r, swiggy, zomato }) => {
@@ -270,13 +267,13 @@ export default function LocationDashboard({
             return (
               <div
                 key={r.id}
-                className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 last:border-0"
-                style={{ background: hasMismatch ? "#fff9f0" : "white" }}
+                className="flex items-center gap-4 px-4 py-3 border-b last:border-0"
+                style={{ background: hasMismatch ? "#FFFBF0" : "var(--surface)", borderColor: "var(--border)" }}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{r.brand}</div>
+                  <div className="text-sm font-medium truncate" style={{ color: "var(--ink)" }}>{r.brand}</div>
                   {(r.operational_hours_swiggy || r.operational_hours_zomato) && (
-                    <div className="text-[10px] text-gray-400 mt-0.5">
+                    <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>
                       {r.operational_hours_swiggy || r.operational_hours_zomato}
                     </div>
                   )}
@@ -296,12 +293,12 @@ export default function LocationDashboard({
                         {swiggyOpen === null ? "NO DATA" : swiggyOpen ? "ONLINE" : "OFFLINE"}
                       </span>
                       {swiggy && (
-                        <div className="text-[10px] text-gray-400 mt-0.5">
+                        <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>
                           {formatDistanceToNow(new Date(swiggy.fetched_at), { addSuffix: true })}
                         </div>
                       )}
                       {swiggy && swiggy.item_count > 0 && (
-                        <div className="text-[10px] text-gray-400 mt-0.5">
+                        <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>
                           {swiggy.item_count} items
                           {swiggy.items_out_of_stock > 0 && (
                             <span className="text-amber-600 font-medium"> · {swiggy.items_out_of_stock} OOS</span>
@@ -316,7 +313,7 @@ export default function LocationDashboard({
                       )}
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-300">Not active</span>
+                    <span className="text-xs" style={{ color: "var(--border-2)" }}>Not active</span>
                   )}
                 </div>
 
@@ -354,7 +351,7 @@ export default function LocationDashboard({
                       )}
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-300">Not active</span>
+                    <span className="text-xs" style={{ color: "var(--border-2)" }}>Not active</span>
                   )}
                 </div>
 
@@ -373,29 +370,27 @@ export default function LocationDashboard({
 
         {/* Status history */}
         {statusChanges.length > 0 && (
-          <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
-            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-                Recent Status Changes
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "0 1px 3px rgba(28,25,23,0.04)" }}>
+            <div className="px-4 py-2.5 border-b" style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>
+                Recent status changes
               </span>
             </div>
             {statusChanges.map((sc) => (
               <div
                 key={sc.id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0"
+                className="flex items-center gap-3 px-4 py-2.5 border-b last:border-0"
+                style={{ borderColor: "var(--border)" }}
               >
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ background: sc.curr_open ? C.online : C.offline }}
                 />
-                <span className="text-xs text-gray-500 capitalize">{sc.platform}</span>
-                <span
-                  className="text-xs font-semibold"
-                  style={{ color: sc.curr_open ? C.online : C.offline }}
-                >
+                <span className="text-xs capitalize" style={{ color: "var(--ink-3)" }}>{sc.platform}</span>
+                <span className="text-xs font-semibold" style={{ color: sc.curr_open ? C.online : C.offline }}>
                   {sc.curr_open ? "came online" : "went offline"}
                 </span>
-                <span className="ml-auto text-xs text-gray-400">
+                <span className="ml-auto text-xs" style={{ color: "var(--ink-4)" }}>
                   {formatDistanceToNow(new Date(sc.changed_at), { addSuffix: true })}
                 </span>
               </div>
@@ -405,10 +400,10 @@ export default function LocationDashboard({
 
         {/* Live menu items per brand */}
         {restaurants.some(({ swiggy, zomato }) => (swiggy?.items?.length ?? 0) > 0 || (zomato?.items?.length ?? 0) > 0) && (
-          <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
-            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-                Live Menu Items
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "0 1px 3px rgba(28,25,23,0.04)" }}>
+            <div className="px-4 py-2.5 border-b" style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-4)" }}>
+                Live menu items
               </span>
             </div>
             {restaurants.map(({ restaurant: r, swiggy, zomato }) => {
@@ -416,8 +411,8 @@ export default function LocationDashboard({
               const hasZomatoItems = (zomato?.items?.length ?? 0) > 0;
               if (!hasSwiggyItems && !hasZomatoItems) return null;
               return (
-                <div key={r.id} className="px-4 py-3 border-b border-gray-100 last:border-0">
-                  <div className="text-sm font-semibold text-gray-800 mb-2">{r.brand}</div>
+                <div key={r.id} className="px-4 py-3 border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+                  <div className="text-sm font-semibold mb-2" style={{ color: "var(--ink)" }}>{r.brand}</div>
                   <div className="grid grid-cols-2 gap-4">
                     {r.should_be_live_swiggy && hasSwiggyItems && (
                       <div>

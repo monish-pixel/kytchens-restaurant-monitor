@@ -5,7 +5,32 @@
 
 :root {
   color-scheme: light;
+  /* Kytchens design tokens */
+  --canvas:    #FAF8F3;
+  --ink:       #1C1917;
+  --ink-2:     #44403C;
+  --ink-3:     #78716C;
+  --ink-4:     #A8A29E;
+  --border:    #E7E5E0;
+  --border-2:  #D6D3CE;
+  --surface:   #FFFFFF;
+  --surface-2: #F5F3EE;
+  --brand:     #F97316;
+  --brand-bg:  #FFF7ED;
+  --brand-drk: #EA6C0A;
 }
+
+@theme {
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --color-canvas: #FAF8F3;
+  --color-brand:  #F97316;
+}
+
 html {
-  background: #f9fafb !important;
+  background: var(--canvas) !important;
+}
+
+body {
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
