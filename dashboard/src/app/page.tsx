@@ -1,10 +1,10 @@
 import { getFleetStatus } from "@/lib/fleet";
 import FleetDashboard, { type LocationData } from "@/components/FleetDashboard";
 
-export const revalidate = 1800; // 30 min — matches scraper cadence
+export const revalidate = 60;
 
 export default async function FleetPage() {
-  const { byCity, totalOnline, totalOffline, totalStale } = await getFleetStatus();
+  const { byCity, totalOnline, totalOffline, totalStale, lastFetchedAt } = await getFleetStatus();
 
   const locations: LocationData[] = [];
 
@@ -55,6 +55,7 @@ export default async function FleetPage() {
       totalOnline={totalOnline}
       totalOffline={totalOffline}
       totalStale={totalStale}
+      lastFetchedAt={lastFetchedAt}
     />
   );
 }

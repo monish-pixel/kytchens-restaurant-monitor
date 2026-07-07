@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getLocationStatus } from "@/lib/fleet";
 import LocationDashboard from "@/components/LocationDashboard";
 
-export const revalidate = 1800; // 30 min — matches scraper cadence
+export const revalidate = 60;
 
 type Props = {
   params: Promise<{ city: string; location: string }>;

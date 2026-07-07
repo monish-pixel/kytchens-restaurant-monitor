@@ -112,6 +112,7 @@ export async function getFleetStatus(): Promise<{
   totalOnline: number;
   totalOffline: number;
   totalStale: number;
+  lastFetchedAt: string | null;
 }> {
   const [{ data: restaurants, error }, snapMap] = await Promise.all([
     supabase
@@ -159,7 +160,11 @@ export async function getFleetStatus(): Promise<{
     byCity[city][location].push({ restaurant, swiggy, zomato });
   }
 
-  return { byCity, totalOnline, totalOffline, totalStale };
+  let lastFetchedAt: string | null = null;
+  for (const snap of snapMap.values()) {
+    if (!lastFetchedAt || snap.fetched_at > lastFetchedAt) lastFetchedAt = snap.fetched_at;
+  }
+  return { byCity, totalOnline, totalOffline, totalStale, lastFetchedAt };
 }
 
 export async function getUptimeHistory(restaurantIds: string[]): Promise<UptimeHistory> {

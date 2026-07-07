@@ -133,8 +133,7 @@ export default function LocationDashboard({
   const [dismissing, setDismissing] = useState(false);
 
   useEffect(() => {
-    // Refresh every 30 min — matches scraper cadence.
-    const id = setInterval(() => router.refresh(), 30 * 60 * 1000);
+    const id = setInterval(() => router.refresh(), 60 * 1000);
     return () => clearInterval(id);
   }, [router]);
 
@@ -197,7 +196,6 @@ export default function LocationDashboard({
               ) : (
                 <div className="text-xs" style={{ color: "var(--ink-4)" }}>No recent data</div>
               )}
-              <div className="text-[10px] mt-0.5" style={{ color: "var(--ink-4)" }}>Scraper runs every 30 min</div>
             </div>
           </div>
         </div>

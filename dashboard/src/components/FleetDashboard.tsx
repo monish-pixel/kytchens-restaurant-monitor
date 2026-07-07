@@ -23,6 +23,7 @@ type Props = {
   totalOnline: number;
   totalOffline: number;
   totalStale: number;
+  lastFetchedAt: string | null;
 };
 
 const C = {
@@ -51,15 +52,15 @@ function StatusChip({ open, active }: { open: boolean | null; active: boolean })
 }
 
 function PlatformBadge({ color, label, offline, total }: { color: string; label: string; offline: number; total: number }) {
-  const ok = offline === 0;
+  const allOnline = offline === 0;
+  const allOffline = total > 0 && offline === total;
+  const statusText = allOnline ? "All online" : allOffline ? "All offline" : `${offline} offline`;
+  const statusColor = allOnline ? C.online : C.offline;
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[10px] font-bold tracking-wide" style={{ color }}>{label}</span>
-      {ok ? (
-        <span className="text-[10px] font-medium" style={{ color: C.online }}>✓ {total}/{total}</span>
-      ) : (
-        <span className="text-[10px] font-semibold" style={{ color: C.offline }}>{offline} offline</span>
-      )}
+    <div className="text-right min-w-[88px]">
+      <div className="text-[10px] font-bold tracking-wider uppercase" style={{ color }}>{label}</div>
+      <div className="text-sm font-bold leading-tight" style={{ color: statusColor }}>{statusText}</div>
+      <div className="text-[10px]" style={{ color: "var(--ink-4)" }}>{total - offline}/{total}</div>
     </div>
   );
 }
@@ -115,7 +116,15 @@ function BrandRow({ s, locationHref }: { s: RestaurantStatus; locationHref: stri
 function LocationCard({ loc }: { loc: LocationData }) {
   const hasIssues = loc.swiggyOfflineCount > 0 || loc.zomatoOfflineCount > 0;
   const [expanded, setExpanded] = useState(hasIssues);
+  const [copied, setCopied] = useState(false);
   const href = `/l/${loc.citySlug}/${loc.locationSlug}`;
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(window.location.origin + href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
   const swiggyTotal = loc.brands.filter(b => b.restaurant.should_be_live_swiggy).length;
   const zomatoTotal = loc.brands.filter(b => b.restaurant.should_be_live_zomato && !!b.restaurant.zomato_slug).length;
 
@@ -161,6 +170,26 @@ function LocationCard({ loc }: { loc: LocationData }) {
         >
           View →
         </Link>
+
+        {/* Copy kitchen URL */}
+        <div
+          role="button"
+          onClick={handleCopy}
+          title={copied ? "Copied!" : "Copy kitchen link to share"}
+          className="flex items-center gap-1 text-[11px] cursor-pointer transition-all rounded px-2 py-0.5 ml-1 whitespace-nowrap"
+          style={{
+            color: copied ? C.online : "var(--ink-4)",
+            border: `1px solid ${copied ? "#BBF7D0" : "var(--border)"}`,
+            background: copied ? "#F0FDF4" : "var(--surface-2)",
+          }}
+        >
+          {copied ? (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          )}
+          {copied ? "Copied" : "Share"}
+        </div>
       </button>
 
       {expanded && (
@@ -181,12 +210,12 @@ function LocationCard({ loc }: { loc: LocationData }) {
   );
 }
 
-export default function FleetDashboard({ locations, cities, totalOnline, totalOffline, totalStale }: Props) {
+export default function FleetDashboard({ locations, cities, totalOnline, totalOffline, totalStale, lastFetchedAt }: Props) {
   const router = useRouter();
   const [selectedCity, setSelectedCity] = useState("All");
 
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 30 * 60 * 1000);
+    const id = setInterval(() => router.refresh(), 60 * 1000);
     return () => clearInterval(id);
   }, [router]);
 
@@ -211,7 +240,13 @@ export default function FleetDashboard({ locations, cities, totalOnline, totalOf
             <h1 className="text-base font-bold" style={{ color: "var(--ink)" }}>Store Live</h1>
             <p className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>Real-time listing status across all platforms</p>
           </div>
-          <div className="text-xs" style={{ color: "var(--ink-4)" }}>Scraper runs every 30 min</div>
+          {lastFetchedAt ? (
+            <div className="text-xs" style={{ color: "var(--ink-4)" }}>
+              Last run {formatDistanceToNow(new Date(lastFetchedAt), { addSuffix: true })}
+            </div>
+          ) : (
+            <div className="text-xs" style={{ color: "var(--ink-4)" }}>No recent data</div>
+          )}
         </div>
 
         {/* KPI strip */}

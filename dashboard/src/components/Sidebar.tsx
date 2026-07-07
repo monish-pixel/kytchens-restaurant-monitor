@@ -41,6 +41,7 @@ const NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  if (pathname.startsWith("/l/")) return null;
 
   return (
     <aside
@@ -55,19 +56,16 @@ export default function Sidebar() {
         <div className="flex items-center gap-3">
           {/* Logo mark */}
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "var(--brand)" }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 select-none font-black text-white"
+            style={{ background: "var(--brand)", fontSize: "20px", lineHeight: 1, letterSpacing: "-0.5px" }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2" />
-              <path d="M12 8v4l3 3" />
-            </svg>
+            K
           </div>
           <div>
-            <div className="text-[13px] font-bold leading-tight" style={{ color: "var(--ink)" }}>
+            <div className="text-[14px] font-bold leading-tight tracking-tight" style={{ color: "var(--ink)" }}>
               Kytchens
             </div>
-            <div className="text-[10px] leading-tight" style={{ color: "var(--ink-4)" }}>
+            <div className="text-[10px] leading-tight uppercase tracking-widest font-medium" style={{ color: "var(--ink-4)" }}>
               Fleet Monitor
             </div>
           </div>
