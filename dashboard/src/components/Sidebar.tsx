@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const NAV = [
@@ -54,21 +55,7 @@ export default function Sidebar() {
       {/* Brand */}
       <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--border)" }}>
         <div className="flex items-center gap-3">
-          {/* Logo mark */}
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 select-none font-black text-white"
-            style={{ background: "var(--brand)", fontSize: "20px", lineHeight: 1, letterSpacing: "-0.5px" }}
-          >
-            K
-          </div>
-          <div>
-            <div className="text-[14px] font-bold leading-tight tracking-tight" style={{ color: "var(--ink)" }}>
-              Kytchens
-            </div>
-            <div className="text-[10px] leading-tight uppercase tracking-widest font-medium" style={{ color: "var(--ink-4)" }}>
-              Fleet Monitor
-            </div>
-          </div>
+          <Image src="/kytchens_logo.png" alt="Kytchens" width={100} height={74} className="w-auto h-7 object-contain" priority />
         </div>
       </div>
 
