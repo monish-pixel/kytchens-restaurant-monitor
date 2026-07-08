@@ -161,16 +161,6 @@ function LocationCard({ loc }: { loc: LocationData }) {
           <PlatformBadge color={C.zomato} label="Zomato" offline={loc.zomatoOfflineCount} total={zomatoTotal} />
         </div>
 
-        {/* View link */}
-        <Link
-          href={href}
-          onClick={e => e.stopPropagation()}
-          className="text-[11px] font-semibold ml-2 whitespace-nowrap transition-colors"
-          style={{ color: "var(--brand)" }}
-        >
-          View →
-        </Link>
-
         {/* Copy kitchen URL */}
         <div
           role="button"

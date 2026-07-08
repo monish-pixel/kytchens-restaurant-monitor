@@ -362,7 +362,9 @@ export type BrandMenuComparison = {
   restaurantId: number;
   brand: string;
   location: string;
+  location_slug: string;
   city: string;
+  city_slug: string;
   swiggyId: string | null;
   zomatoSlug: string | null;
   swiggyTotal: number;
@@ -379,7 +381,7 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
   // Fetch all active restaurants
   const { data: restaurants, error } = await supabase
     .from("restaurants")
-    .select("id,brand,location,city,swiggy_id,swiggy_slug,zomato_slug,should_be_live_swiggy,should_be_live_zomato")
+    .select("id,brand,location,location_slug,city,city_slug,swiggy_id,swiggy_slug,zomato_slug,should_be_live_swiggy,should_be_live_zomato")
     .eq("active", true)
     .order("brand");
 
@@ -471,7 +473,9 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
       restaurantId: r.id,
       brand: r.brand,
       location: r.location,
+      location_slug: r.location_slug,
       city: r.city,
+      city_slug: r.city_slug,
       swiggyId: r.swiggy_id,
       zomatoSlug: r.zomato_slug,
       swiggyTotal: swiggyItems.length,
