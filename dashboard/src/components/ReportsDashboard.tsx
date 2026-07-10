@@ -260,7 +260,7 @@ function DatePicker({ preset, customFrom, customTo, onApply }: {
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-1.5 z-50 flex rounded-2xl overflow-hidden"
+          className="absolute top-full right-0 mt-1.5 z-50 flex rounded-2xl overflow-hidden"
           style={{
             background: "var(--surface)",
             border: "1px solid var(--border)",
