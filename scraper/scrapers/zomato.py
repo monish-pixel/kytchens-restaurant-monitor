@@ -47,16 +47,21 @@ def parse(data: dict) -> dict:
     timing = basic.get("timing", {})
     order = data["page_data"]["order"]
 
-    # res_status_text is the primary field: "Open now" / "Opens at X"
-    # also check order_status for delivery-specific availability (e.g. restaurant
-    # open but delivery paused). Both must be affirmative for is_open = True.
+    # res_status_text variants:
+    #   "Open now"            → currently open
+    #   "Closes in X minutes" → currently open (store will close soon)
+    #   "Opens in X minutes"  → currently closed (about to open)
+    #   "Opens at HH:MM"      → currently closed
+    # Checking only for "open" missed the "Closes in X" case entirely.
     status_text = basic.get("res_status_text", "")
     is_perm_closed = basic.get("is_perm_closed", False)
     is_temp_closed = basic.get("is_temp_closed", False)
     # order_status present on delivery pages: "accepting_orders" means live
     order_status = (data.get("page_data", {}).get("order", {})
                     .get("actionInfo", {}).get("status", ""))
-    schedule_open = "open" in status_text.lower() and not is_perm_closed and not is_temp_closed
+    status_lower = status_text.lower()
+    currently_open = "open now" in status_lower or "closes" in status_lower
+    schedule_open = currently_open and not is_perm_closed and not is_temp_closed
     # if order_status is present, require it to confirm delivery is active
     if order_status:
         is_open = schedule_open and order_status == "accepting_orders"
