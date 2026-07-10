@@ -56,7 +56,9 @@ export default async function KitchenReportsPage({ params }: Props) {
         downtimes.push({
           brand: info.brand,
           location: info.location,
+          location_slug: e.location_slug ?? "",
           city: info.city,
+          city_slug: e.city_slug ?? "",
           platform,
           restaurant_id: restaurantId,
           went_offline: e.changed_at,
@@ -95,7 +97,7 @@ export default async function KitchenReportsPage({ params }: Props) {
 
   return (
     <ReportsDashboard
-      downtimes={downtimes.slice(0, 100)}
+      downtimes={downtimes}
       summaries={summaries}
     />
   );

@@ -47,6 +47,26 @@ def _maybe_send_email(platform: str, label: str, location_slug: str):
         print(f"[EMAIL ALERT] {e}")
 
 
+def send_store_open_after_close_alert(platform: str, restaurant: dict):
+    """Email alert when a Pune store is still ONLINE past its scheduled close time."""
+    r = restaurant or {}
+    brand = r.get("brand", "")
+    location = r.get("location", "")
+    label = f"{brand} @ {location}" if brand and location else platform.upper()
+    now_ist = datetime.now(IST).strftime("%d %b %Y, %I:%M %p IST")
+    subject = f"[Kytchens Alert] Still ONLINE past close: {label} on {platform.upper()}"
+    body = (
+        f"{label} is still ONLINE on {platform.upper()} past its scheduled close time.\n\n"
+        f"Time: {now_ist}\n\n"
+        f"The store should be closed. Please verify."
+    )
+    try:
+        from alerts.gmail import send_gmail
+        send_gmail(subject, body)
+    except Exception as e:
+        print(f"[EMAIL CLOSE ALERT] {e}")
+
+
 def send_scraper_alert(platform: str, fail_count: int, restaurant: dict | None = None):
     r = restaurant or {}
     brand = r.get("brand", platform.upper())

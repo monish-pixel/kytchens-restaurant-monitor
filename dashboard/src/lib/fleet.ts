@@ -414,12 +414,12 @@ export async function getMenuComparison(): Promise<BrandMenuComparison[]> {
   if (!snapIds.length) return [];
 
   // Fetch all menu items for those snapshots.
-  // 10 000 row limit: supports ~50 brands × 100 items/platform × 2 platforms.
+  // 25 000 row limit: supports ~60 brands × 200 items/platform × 2 platforms.
   const { data: items } = await supabase
     .from("menu_items")
     .select("snapshot_id,name,category,in_stock,is_enabled")
     .in("snapshot_id", snapIds)
-    .limit(10000);
+    .limit(25000);
 
   // Build item sets per (platform, restaurant_id) — fixed menu only
   const itemsBySnap = new Map<number, Array<{ name: string; category: string | null }>>();

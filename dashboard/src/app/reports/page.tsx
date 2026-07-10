@@ -6,7 +6,9 @@ export const revalidate = 300;
 export type DowntimeRecord = {
   brand: string;
   location: string;
+  location_slug: string;
   city: string;
+  city_slug: string;
   platform: string;
   restaurant_id: string;
   went_offline: string;
@@ -25,20 +27,22 @@ export type UptimeSummary = {
 };
 
 export default async function ReportsPage() {
-  // Get status changes from last 7 days
-  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // Get status changes from last 90 days — client filters by date range + store hours
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: changes } = await supabase
     .from("status_changes")
     .select("id,platform,restaurant_id,prev_open,curr_open,changed_at,brand,location_slug,city_slug")
     .gte("changed_at", cutoff)
+    .eq("city_slug", "pune")
     .order("changed_at", { ascending: false });
 
-  // Also fetch restaurants for brand/location/city names
+  // Also fetch restaurants for brand/location/city names — Pune only
   const { data: restaurants } = await supabase
     .from("restaurants")
     .select("id,brand,location,city,swiggy_id,zomato_slug")
-    .eq("active", true);
+    .eq("active", true)
+    .eq("city_slug", "pune");
 
   const restaurantMap = new Map<string, { brand: string; location: string; city: string }>();
   for (const r of restaurants ?? []) {
@@ -75,7 +79,9 @@ export default async function ReportsPage() {
         downtimes.push({
           brand: info.brand,
           location: info.location,
+          location_slug: e.location_slug ?? "",
           city: info.city,
+          city_slug: e.city_slug ?? "",
           platform,
           restaurant_id: restaurantId,
           went_offline: e.changed_at,
@@ -115,7 +121,7 @@ export default async function ReportsPage() {
 
   return (
     <ReportsDashboard
-      downtimes={downtimes.slice(0, 100)}
+      downtimes={downtimes}
       summaries={summaries}
     />
   );

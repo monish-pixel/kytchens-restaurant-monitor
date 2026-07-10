@@ -76,6 +76,7 @@ async def poll_swiggy_for(restaurant: dict):
             log(f"[Swiggy] {label} — {status} | {parsed['item_count']} items")
             _alert(parsed, restaurant)
             _save(parsed, raw, restaurant)
+            _check_close_time(parsed, restaurant)
             return
         except Exception as e:
             if attempt < 2:
@@ -103,6 +104,7 @@ def poll_zomato_for(restaurant: dict):
             log(f"[Zomato] {label} — {status} | {parsed['item_count']} items")
             _alert(parsed, restaurant)
             _save(parsed, raw, restaurant)
+            _check_close_time(parsed, restaurant)
             return
         except Exception as e:
             if attempt < 2:
@@ -110,6 +112,21 @@ def poll_zomato_for(restaurant: dict):
                 import time; time.sleep(delays[attempt])
             else:
                 log(f"[Zomato FAIL] {label} — {e}")
+
+
+def _check_close_time(parsed: dict, restaurant: dict):
+    """Email when a Pune store is still online within 65 min of scheduled close."""
+    if not parsed.get("is_open"):
+        return
+    if restaurant.get("city_slug") != "pune":
+        return
+    try:
+        from alerts.store_hours import just_past_close
+        if just_past_close(restaurant.get("location_slug", "")):
+            from alerts.notify import send_store_open_after_close_alert
+            send_store_open_after_close_alert(parsed.get("platform", ""), restaurant)
+    except Exception as e:
+        log(f"[CLOSE ALERT] {e}")
 
 
 async def poll_restaurant(restaurant: dict):
