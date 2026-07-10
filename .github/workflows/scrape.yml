@@ -2,7 +2,7 @@ name: Restaurant Monitor
 
 on:
   schedule:
-    - cron: "0,30 * * * *"   # every 30 minutes (explicit offsets avoid GH scheduler drift)
+    - cron: "0,15,30,45 * * * *"   # every 15 minutes
   workflow_dispatch:           # manual trigger + Apps Script Force Sync
 
 # Cancel any in-progress run when a new one starts — prevents a stuck run from
