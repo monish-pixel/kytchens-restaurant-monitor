@@ -1,5 +1,8 @@
 import json
 import os
+from datetime import datetime, timezone, timedelta
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 
 def send_alert(platform: str, direction: str, parsed: dict, restaurant: dict | None = None):
@@ -19,6 +22,29 @@ def send_alert(platform: str, direction: str, parsed: dict, restaurant: dict | N
     if alert_id and success:
         from storage.supabase import mark_alert_notified
         mark_alert_notified(alert_id)
+
+    # Email for Pune stores going offline during store hours
+    if direction == "WENT OFFLINE" and r.get("city_slug") == "pune":
+        _maybe_send_email(platform, label, r.get("location_slug", ""))
+
+
+def _maybe_send_email(platform: str, label: str, location_slug: str):
+    try:
+        from alerts.store_hours import is_within_store_hours
+        if not is_within_store_hours(location_slug):
+            return
+        now_ist = datetime.now(IST)
+        time_str = now_ist.strftime("%d %b %Y, %I:%M %p IST")
+        subject = f"[Kytchens Alert] OFFLINE: {label} on {platform.upper()}"
+        body = (
+            f"{label} has gone OFFLINE on {platform.upper()}.\n\n"
+            f"Time: {time_str}\n\n"
+            f"Check the fleet monitor for details."
+        )
+        from alerts.gmail import send_gmail
+        send_gmail(subject, body)
+    except Exception as e:
+        print(f"[EMAIL ALERT] {e}")
 
 
 def send_scraper_alert(platform: str, fail_count: int, restaurant: dict | None = None):
