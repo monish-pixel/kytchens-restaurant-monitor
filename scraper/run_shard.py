@@ -72,6 +72,7 @@ async def poll_swiggy_for(restaurant: dict):
                 raise ValueError("invalid response shape")
             parsed = swiggy.parse(raw)
             parsed["restaurant_id"] = swiggy_id
+            parsed = _apply_schedule_override(parsed, restaurant)
             status = "OPEN" if parsed["is_open"] else f"CLOSED ({parsed.get('next_open_message', '')})"
             log(f"[Swiggy] {label} — {status} | {parsed['item_count']} items")
             _alert(parsed, restaurant)
@@ -84,6 +85,22 @@ async def poll_swiggy_for(restaurant: dict):
                 await asyncio.sleep(delays[attempt])
             else:
                 log(f"[Swiggy FAIL] {label} — {e}")
+
+
+def _apply_schedule_override(parsed: dict, restaurant: dict) -> dict:
+    """If platform says open but it's outside scheduled Pune hours, trust the schedule."""
+    if not parsed.get("is_open"):
+        return parsed
+    if restaurant.get("city_slug") != "pune":
+        return parsed
+    try:
+        from alerts.store_hours import is_within_store_hours
+        if not is_within_store_hours(restaurant.get("location_slug", "")):
+            log(f"[SCHEDULE] {restaurant.get('brand')} overridden to CLOSED (outside hours)")
+            return {**parsed, "is_open": False}
+    except Exception:
+        pass
+    return parsed
 
 
 def poll_zomato_for(restaurant: dict):
@@ -100,6 +117,7 @@ def poll_zomato_for(restaurant: dict):
                 raise ValueError("invalid response shape")
             parsed = zomato.parse(raw)
             parsed["restaurant_id"] = zomato_slug
+            parsed = _apply_schedule_override(parsed, restaurant)
             status = "OPEN" if parsed["is_open"] else f"CLOSED ({parsed.get('timing_desc', '')})"
             log(f"[Zomato] {label} — {status} | {parsed['item_count']} items")
             _alert(parsed, restaurant)
