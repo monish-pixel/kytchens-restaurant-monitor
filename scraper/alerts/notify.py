@@ -29,6 +29,8 @@ def send_alert(platform: str, direction: str, parsed: dict, restaurant: dict | N
 
 
 def _maybe_send_email(platform: str, label: str, location_slug: str):
+    if not os.environ.get("SEND_EMAIL_ALERTS"):
+        return
     try:
         from alerts.store_hours import is_within_store_hours
         if not is_within_store_hours(location_slug):
@@ -49,6 +51,8 @@ def _maybe_send_email(platform: str, label: str, location_slug: str):
 
 def send_store_open_after_close_alert(platform: str, restaurant: dict):
     """Email alert when a Pune store is still ONLINE past its scheduled close time."""
+    if not os.environ.get("SEND_EMAIL_ALERTS"):
+        return
     r = restaurant or {}
     brand = r.get("brand", "")
     location = r.get("location", "")
