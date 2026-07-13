@@ -31,7 +31,7 @@ def main():
         "swiggy_id,swiggy_slug,zomato_slug,"
         "operational_hours_swiggy,operational_hours_zomato,"
         "should_be_live_swiggy,should_be_live_zomato"
-    ).eq("active", True).execute()
+    ).eq("active", True).eq("city_slug", "pune").execute()
 
     restaurants = result.data or []
     count = len(restaurants)

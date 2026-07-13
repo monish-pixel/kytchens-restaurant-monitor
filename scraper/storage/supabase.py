@@ -82,6 +82,14 @@ def save_snapshot(parsed: dict, raw: dict, restaurant: dict | None = None) -> bo
             for item in items
         ]).execute()
 
+    # Keep only the latest snapshot — delete all older ones for this restaurant/platform
+    client.table("snapshots") \
+        .delete() \
+        .eq("platform", platform) \
+        .eq("restaurant_id", restaurant_id) \
+        .neq("id", snap_id) \
+        .execute()
+
     return True
 
 
