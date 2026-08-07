@@ -1,7 +1,11 @@
-import httpx
 import json
 from datetime import datetime
 from typing import Optional
+
+try:
+    import httpx
+except ImportError:  # parse()/is_valid() work without httpx (local tests)
+    httpx = None
 
 # Mobile Android User-Agent mirrors what the Zomato app sends.
 # The web route returns delivery-aware open/closed when called with a mobile
@@ -47,26 +51,29 @@ def parse(data: dict) -> dict:
     timing = basic.get("timing", {})
     order = data["page_data"]["order"]
 
-    # res_status_text variants:
-    #   "Open now"            → currently open
-    #   "Closes in X minutes" → currently open (store will close soon)
-    #   "Opens in X minutes"  → currently closed (about to open)
-    #   "Opens at HH:MM"      → currently closed
-    # Checking only for "open" missed the "Closes in X" case entirely.
+    # These are DELIVERY-ONLY cloud kitchens. res_status_text / timing.show_open_now
+    # reflect DINE-IN ("Closed for dining" even at 2am while delivery is live), so
+    # they wrongly reported every outlet closed. The real "accepting delivery orders"
+    # signal is orderDetails.isServiceable (verified against live data 2026-08-08).
     status_text = basic.get("res_status_text", "")
     is_perm_closed = basic.get("is_perm_closed", False)
     is_temp_closed = basic.get("is_temp_closed", False)
-    # order_status present on delivery pages: "accepting_orders" means live
-    order_status = (data.get("page_data", {}).get("order", {})
-                    .get("actionInfo", {}).get("status", ""))
-    status_lower = status_text.lower()
-    currently_open = "open now" in status_lower or "closes" in status_lower
-    schedule_open = currently_open and not is_perm_closed and not is_temp_closed
-    # if order_status is present, require it to confirm delivery is active
-    if order_status:
-        is_open = schedule_open and order_status == "accepting_orders"
+    order_details = data.get("page_data", {}).get("orderDetails", {})
+    is_serviceable = order_details.get("isServiceable")
+    has_online_ordering = order_details.get("hasOnlineOrdering")
+
+    if is_perm_closed or is_temp_closed:
+        is_open = False
+    elif is_serviceable is not None:
+        # delivery live = the outlet is serviceable and online ordering is enabled
+        is_open = bool(is_serviceable) and (has_online_ordering is not False)
+    elif status_text:
+        # fallback for pages without orderDetails: old text heuristic
+        sl = status_text.lower()
+        is_open = ("open now" in sl or "closes" in sl) and not is_perm_closed and not is_temp_closed
     else:
-        is_open = schedule_open
+        # no signal at all → UNKNOWN; caller must not flip status or alert on it
+        is_open = None
     timing_desc = timing.get("timing_desc", "")
     res_id = str(basic.get("res_id", ""))
 
