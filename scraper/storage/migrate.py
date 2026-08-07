@@ -35,6 +35,44 @@ create table if not exists menu_items (
   is_enabled boolean default true
 );
 
+-- Self-heal: ensure the live menu_items FK actually cascades. A pre-existing table
+-- created without cascade left orphaned menu_items when old snapshots were deleted;
+-- with cascade, menu_items always holds only the latest scrape.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'menu_items_snapshot_id_fkey' and confdeltype = 'c'
+  ) then
+    alter table menu_items drop constraint if exists menu_items_snapshot_id_fkey;
+    alter table menu_items add constraint menu_items_snapshot_id_fkey
+      foreign key (snapshot_id) references snapshots(id) on delete cascade;
+  end if;
+end $$;
+
+-- Ratings, day-wise: one row per (platform, outlet, day). Each scrape overwrites
+-- TODAY's row; when the date rolls over, the previous day's row is frozen as history.
+create table if not exists ratings (
+  platform text not null,
+  restaurant_id text not null,
+  rating_date date not null,
+  brand text,
+  location_slug text,
+  city_slug text,
+  rating numeric,
+  rating_count integer,
+  updated_at timestamptz default now(),
+  primary key (platform, restaurant_id, rating_date)
+);
+create index if not exists ratings_date_idx on ratings (rating_date desc);
+alter table ratings enable row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename='ratings' and policyname='public read ratings') then
+    create policy "public read ratings" on ratings for select using (true);
+  end if;
+end $$;
+
 create table if not exists status_changes (
   id bigint generated always as identity primary key,
   platform text not null,

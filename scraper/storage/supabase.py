@@ -26,6 +26,33 @@ def _compute_menu_checksum(items: list) -> str:
     return hashlib.md5(payload.encode()).hexdigest()
 
 
+def _write_rating(client, parsed: dict, restaurant: dict | None) -> None:
+    """Upsert TODAY's rating row (IST). Overwrites through the day; the row is
+    frozen automatically once the date rolls over, giving a day-wise history."""
+    rating = parsed.get("rating")
+    rating_count = parsed.get("rating_count")
+    if rating is None and rating_count is None:
+        return
+    from datetime import datetime, timezone, timedelta
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now = datetime.now(ist)
+    r = restaurant or {}
+    try:
+        client.table("ratings").upsert({
+            "platform": parsed["platform"],
+            "restaurant_id": parsed["restaurant_id"],
+            "rating_date": now.date().isoformat(),
+            "brand": r.get("brand") or parsed.get("brand"),
+            "location_slug": r.get("location_slug") or parsed.get("location_slug"),
+            "city_slug": r.get("city_slug") or parsed.get("city_slug"),
+            "rating": rating,
+            "rating_count": rating_count,
+            "updated_at": now.isoformat(),
+        }, on_conflict="platform,restaurant_id,rating_date").execute()
+    except Exception as e:
+        print(f"[RATING WRITE ERROR] {parsed.get('platform')}/{parsed.get('restaurant_id')}: {e}")
+
+
 def save_snapshot(parsed: dict, raw: dict, restaurant: dict | None = None) -> bool:
     """
     Change-only write. Returns True if snapshot was written, False if skipped.
@@ -35,6 +62,10 @@ def save_snapshot(parsed: dict, raw: dict, restaurant: dict | None = None) -> bo
     platform = parsed["platform"]
     restaurant_id = parsed["restaurant_id"]
     is_open = parsed.get("is_open")
+
+    # Log today's delivery rating every scrape (overwrites today's row, freezes prior
+    # days). Runs before the change-only logic so ratings update even when nothing else did.
+    _write_rating(client, parsed, restaurant)
 
     if is_open is None:
         return False
@@ -134,6 +165,27 @@ def write_alert(platform: str, alert_type: str, details: str,
 def mark_alert_notified(alert_id: int) -> None:
     client = _get_client()
     client.table("alerts").update({"notified": True}).eq("id", alert_id).execute()
+
+
+def record_check(platform: str, restaurant_id: str, restaurant: dict | None,
+                 status: str, detail: str | None = None) -> None:
+    """Heartbeat for every poll outcome: ok | ambiguous | fetch_failed.
+
+    The dashboard uses the latest row per (platform, restaurant_id) to decide
+    whether a displayed status is verified-fresh or must be shown as
+    'unverified since HH:MM'. Without this, a dead scraper silently freezes
+    the board on stale last-known state."""
+    client = _get_client()
+    r = restaurant or {}
+    client.table("scrape_health").insert({
+        "platform": platform,
+        "restaurant_id": restaurant_id,
+        "brand": r.get("brand"),
+        "location_slug": r.get("location_slug"),
+        "city_slug": r.get("city_slug"),
+        "status": status,
+        "detail": detail,
+    }).execute()
 
 
 def get_latest(platform: str, restaurant_id: str) -> dict | None:

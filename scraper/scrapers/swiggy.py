@@ -1,7 +1,11 @@
 import asyncio
 import json
 from datetime import datetime
-from playwright.async_api import async_playwright
+
+try:
+    from playwright.async_api import async_playwright
+except ImportError:  # parse()/is_valid() work without playwright (local tests)
+    async_playwright = None
 
 
 async def fetch(restaurant_id: str, url_slug: str) -> dict:
@@ -134,16 +138,33 @@ def parse(data: dict) -> dict:
     next_open = avail.get("nextOpenTime")
     opened = avail.get("opened")
     # "opened" is the explicit server-side field (1/True when accepting orders).
-    # If absent AND no nextOpenTime either, treat as closed — the fallback
-    # `next_open is None` caused false-positives when Swiggy returns a minimal
-    # availability object like {"visibility": true, "restaurantClosedMeta": {}}
-    # with neither field populated.
+    # nextOpenTime without "opened" is an explicit closed-with-reopen-time.
+    # Neither field populated (minimal availability object like
+    # {"visibility": true, "restaurantClosedMeta": {}}) is AMBIGUOUS — guessing
+    # "closed" here caused false OFFLINE alerts. is_open=None means UNKNOWN:
+    # callers must not flip status, alert, or overwrite the last known state.
     if opened is not None:
         is_open = bool(opened)
     elif next_open is not None:
         is_open = False
     else:
-        is_open = False
+        is_open = None
+
+    import re as _re2
+    try:
+        rating = float(restaurant_info.get("avg_rating")) if restaurant_info.get("avg_rating") else None
+    except (TypeError, ValueError):
+        rating = None
+    # totalRatingsString like "1.2K ratings" / "163 ratings" -> integer
+    rating_count = None
+    m = _re2.match(r"([\d.,]+)\s*([KkMm]?)", str(restaurant_info.get("total_ratings") or "").strip())
+    if m:
+        try:
+            n = float(m.group(1).replace(",", ""))
+            n *= {"k": 1e3, "m": 1e6}.get(m.group(2).lower(), 1)
+            rating_count = int(n)
+        except (TypeError, ValueError):
+            rating_count = None
 
     return {
         "platform": "swiggy",
@@ -151,6 +172,8 @@ def parse(data: dict) -> dict:
         "fetched_at": datetime.utcnow().isoformat(),
         "is_open": is_open,
         "next_open_message": avail.get("nextOpenTimeMessage"),
+        "rating": rating,
+        "rating_count": rating_count,
         "items": items,
         "item_count": len(items),
     }

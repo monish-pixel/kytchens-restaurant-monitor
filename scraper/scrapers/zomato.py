@@ -77,6 +77,17 @@ def parse(data: dict) -> dict:
     timing_desc = timing.get("timing_desc", "")
     res_id = str(basic.get("res_id", ""))
 
+    # Delivery rating + review count (e.g. 4.1 from "163 Delivery Reviews")
+    delivery = basic.get("rating_new", {}).get("ratings", {}).get("DELIVERY", {})
+    try:
+        rating = float(delivery.get("rating") or delivery.get("ratingV2")) if delivery.get("rating") or delivery.get("ratingV2") else None
+    except (TypeError, ValueError):
+        rating = None
+    try:
+        rating_count = int(str(delivery.get("reviewCount", "")).replace(",", "")) or None
+    except (TypeError, ValueError):
+        rating_count = None
+
     items = []
     menus = order.get("menuList", {}).get("menus", [])
     for menu_block in menus:
@@ -105,6 +116,8 @@ def parse(data: dict) -> dict:
         "fetched_at": datetime.utcnow().isoformat(),
         "is_open": is_open,
         "timing_desc": timing_desc,
+        "rating": rating,
+        "rating_count": rating_count,
         "items": items,
         "item_count": len(items),
     }
