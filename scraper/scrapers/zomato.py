@@ -51,10 +51,15 @@ def parse(data: dict) -> dict:
     timing = basic.get("timing", {})
     order = data["page_data"]["order"]
 
-    # These are DELIVERY-ONLY cloud kitchens. res_status_text / timing.show_open_now
-    # reflect DINE-IN ("Closed for dining" even at 2am while delivery is live), so
-    # they wrongly reported every outlet closed. The real "accepting delivery orders"
-    # signal is orderDetails.isServiceable (verified against live data 2026-08-08).
+    # Two independent "open" signals, each a false-negative on its OWN:
+    #   - res_status_text follows the restaurant clock but reads "Closed for dining"
+    #     for delivery-only kitchens even at 2am while delivery is live.
+    #   - orderDetails.isServiceable is delivery availability to the *query* location;
+    #     it comes back False for outlets outside the unauthenticated serviceability
+    #     radius (e.g. Kharadi) even while the outlet is open and taking orders.
+    # So: online if EITHER positive signal holds; offline only when both say closed
+    # (or the outlet is explicitly temp/perm closed). Verified live 2026-08-08 —
+    # Bina & Parsi Kharadi were "Open now" + hasOnlineOrdering yet isServiceable False.
     status_text = basic.get("res_status_text", "")
     is_perm_closed = basic.get("is_perm_closed", False)
     is_temp_closed = basic.get("is_temp_closed", False)
@@ -64,13 +69,10 @@ def parse(data: dict) -> dict:
 
     if is_perm_closed or is_temp_closed:
         is_open = False
-    elif is_serviceable is not None:
-        # delivery live = the outlet is serviceable and online ordering is enabled
-        is_open = bool(is_serviceable) and (has_online_ordering is not False)
-    elif status_text:
-        # fallback for pages without orderDetails: old text heuristic
-        sl = status_text.lower()
-        is_open = ("open now" in sl or "closes" in sl) and not is_perm_closed and not is_temp_closed
+    elif status_text or is_serviceable is not None:
+        sl = (status_text or "").lower()
+        open_by_clock = "open now" in sl or "closes" in sl
+        is_open = (open_by_clock or is_serviceable is True) and (has_online_ordering is not False)
     else:
         # no signal at all → UNKNOWN; caller must not flip status or alert on it
         is_open = None
