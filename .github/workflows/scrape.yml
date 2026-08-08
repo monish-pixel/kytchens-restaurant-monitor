@@ -1,0 +1,171 @@
+name: Restaurant Monitor
+
+on:
+  schedule:
+    - cron: "5,35 * * * *"   # every 30 min, offset +5 to capture post-boundary state
+  workflow_dispatch:           # manual trigger + Apps Script Force Sync
+
+# Cancel any in-progress run when a new one starts — prevents a stuck run from
+# blocking the next cycle and causing the 6h+ delays seen previously.
+concurrency:
+  group: restaurant-monitor
+  cancel-in-progress: true
+
+# The scraper source lives in the PRIVATE repo kytchens-restaurant-monitor-core.
+# This public repo is a CI shell: it runs on GitHub's free unlimited public-repo
+# minutes and checks the private code out at run time via a read-only deploy key
+# (secret CORE_DEPLOY_KEY). Nothing sensitive is stored in this repo's tree.
+
+jobs:
+  # ── Job 1: sync Google Sheets → Supabase ────────────────────────────────
+  sync:
+    name: Sync Sheets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      sync_ok: ${{ steps.sync.outputs.sync_ok }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: monish-pixel/kytchens-restaurant-monitor-core
+          ref: main
+          ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Sync Google Sheets to Supabase
+        id: sync
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python sync_sheets.py || {
+            echo "sync_ok=false" >> $GITHUB_OUTPUT
+            echo "[SYNC] Sheets sync failed — scraping will use stale Supabase data" >&2
+            curl -s -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-type: application/json' \
+              --data '{"text":":warning: *Sync warning:* Google Sheets sync failed this cycle — using stale restaurant config."}' || true
+            exit 0
+          }
+          echo "sync_ok=true" >> $GITHUB_OUTPUT
+
+  # ── Job 2: split restaurants into shards ────────────────────────────────
+  split:
+    name: Split Shards
+    needs: sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.split.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: monish-pixel/kytchens-restaurant-monitor-core
+          ref: main
+          ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Split restaurants into shards
+        id: split
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          MIN_EXPECTED_RESTAURANTS: "1"
+        run: python split_shards.py >> $GITHUB_OUTPUT
+
+  # ── Job 3: scrape each shard in parallel ────────────────────────────────
+  scrape:
+    name: "Scrape shard ${{ matrix.shard_index }}"
+    needs: split
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.split.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: monish-pixel/kytchens-restaurant-monitor-core
+          ref: main
+          ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('scraper/requirements.txt') }}
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium --with-deps
+
+      - name: Scrape shard ${{ matrix.shard_index }}
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GMAIL_SENDER_EMAIL: ${{ secrets.GMAIL_SENDER_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SHARD_RESTAURANTS: ${{ matrix.restaurants }}
+        run: python run_shard.py
+
+  # ── Job 4: post-matrix alert aggregation ────────────────────────────────
+  summarize:
+    name: Summarize Alerts
+    needs: scrape
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: monish-pixel/kytchens-restaurant-monitor-core
+          ref: main
+          ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Send platform outage alert if needed
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PLATFORM_OUTAGE_THRESHOLD: "5"
+        run: python summarize_alerts.py

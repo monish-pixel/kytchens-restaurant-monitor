@@ -1,0 +1,29 @@
+name: Deploy Dashboard
+
+# Dashboard source now lives in the PRIVATE core repo. Auto-deploy on dashboard
+# pushes is no longer possible from this public shell (the code isn't here), so
+# deploys are triggered manually. To ship a dashboard change: push it to the core
+# repo, then run this workflow (Actions tab → Deploy Dashboard → Run workflow),
+# or `gh workflow run "Deploy Dashboard" --repo monish-pixel/kytchens-restaurant-monitor`.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: monish-pixel/kytchens-restaurant-monitor-core
+          ref: main
+          ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
+
+      - name: Deploy to Vercel
+        working-directory: dashboard
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel --prod --token "$VERCEL_TOKEN"
