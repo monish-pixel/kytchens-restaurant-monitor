@@ -17,53 +17,15 @@ concurrency:
 # (secret CORE_DEPLOY_KEY). Nothing sensitive is stored in this repo's tree.
 
 jobs:
-  # ── Job 1: sync Google Sheets → Supabase ────────────────────────────────
-  sync:
-    name: Sync Sheets
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      sync_ok: ${{ steps.sync.outputs.sync_ok }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: monish-pixel/kytchens-restaurant-monitor-core
-          ref: main
-          ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
+  # ── Sheet sync DISABLED (2026-08-10) ────────────────────────────────────
+  # The "Restaurant Master" sheet held stale/wrong Zomato slugs and its sync
+  # kept overwriting manual corrections. Until the sheet is trusted again, the
+  # Supabase `restaurants` table is the source of truth — edit slugs/active there
+  # directly. To re-enable: restore the `sync` job and add `needs: sync` to split.
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: scraper/requirements.txt
-
-      - name: Install dependencies
-        run: pip install -r scraper/requirements.txt
-
-      - name: Sync Google Sheets to Supabase
-        id: sync
-        working-directory: scraper
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          python sync_sheets.py || {
-            echo "sync_ok=false" >> $GITHUB_OUTPUT
-            echo "[SYNC] Sheets sync failed — scraping will use stale Supabase data" >&2
-            curl -s -X POST "$SLACK_WEBHOOK_URL" \
-              -H 'Content-type: application/json' \
-              --data '{"text":":warning: *Sync warning:* Google Sheets sync failed this cycle — using stale restaurant config."}' || true
-            exit 0
-          }
-          echo "sync_ok=true" >> $GITHUB_OUTPUT
-
-  # ── Job 2: split restaurants into shards ────────────────────────────────
+  # ── Job 1: split restaurants into shards ────────────────────────────────
   split:
     name: Split Shards
-    needs: sync
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
